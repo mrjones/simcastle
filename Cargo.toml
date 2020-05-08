@@ -1,0 +1,17 @@
+[package]
+name = "simcastle"
+version = "0.1.0"
+authors = ["Matt Jones <jonesmr@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "simcastle_core"
+path = "src/core/lib.rs"
+
+[[bin]]
+name = "simcastle-cmdline"
+path = "src/cmdline/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
