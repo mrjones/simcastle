@@ -1,6 +1,11 @@
-use simcastle_core::core_logic;
+use simcastle_core;
 
 fn main() {
     println!("Hello, world!");
-    core_logic();
+    let g = simcastle_core::Game::new();
+
+    for ref c in g.characters() {
+        println!(" - {}", c.name());
+    }
+
 }
