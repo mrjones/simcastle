@@ -1,18 +1,29 @@
 extern crate rand;
 extern crate rand_distr;
+extern crate std;
 
 use rand::Rng;
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Trait {
+    INTELLIGENCE,
+    STRENGTH,
+}
+
+pub fn all_traits() -> Vec<Trait> {
+    return vec![Trait::INTELLIGENCE, Trait::STRENGTH];
+}
+
 pub struct Character {
     name: String,
-    intelligence: i32,
+    traits: std::collections::HashMap<Trait, i32>,
 }
 
 impl Character {
     pub fn new_random() -> Character {
         return Character{
             name: random_name(),
-            intelligence: random_stat(),
+            traits: random_traits(),
         };
     }
 
@@ -21,13 +32,23 @@ impl Character {
     }
 
     pub fn full_debug_string(&self) -> String {
-        return format!("[{}] int:{}", self.name, self.intelligence);
+        return format!("[{}] traits:{}",
+                       self.name,
+                       self.traits.iter().map(|(t, v)| format!("{:?}:{}", t, v)).collect::<Vec<String>>().join(" "));
     }
 }
 
 fn random_stat() -> i32 {
     let x: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
     return (10.0 * x) as i32;
+}
+
+fn random_traits() -> std::collections::HashMap<Trait, i32> {
+    let mut map: std::collections::HashMap<Trait, i32> = std::collections::HashMap::new();
+    for t in all_traits() {
+        map.insert(t.clone(), random_stat());
+    }
+    return map;
 }
 
 fn random_name() -> String {
