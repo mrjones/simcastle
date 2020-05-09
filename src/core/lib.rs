@@ -1,3 +1,4 @@
+pub mod castle;
 pub mod character;
 pub mod gamestate;
 pub mod workforce;
