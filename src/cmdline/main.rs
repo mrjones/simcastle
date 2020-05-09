@@ -9,11 +9,11 @@ fn main() {
 
     print_workforce(&game);
 
-    {
-        let workforce = game.mut_state().mut_workforce();
-        let worker_id = workforce.population().iter().nth(0).expect("1 worker").id().clone();
-        workforce.assign(worker_id, simcastle_core::workforce::Job::FARMER);
-    }
+//    {
+//        let workforce = game.mut_state().mut_workforce();
+//        let worker_id = workforce.population().iter().nth(0).expect("1 worker").id().clone();
+//        workforce.assign(worker_id, simcastle_core::workforce::Job::FARMER);
+//    }
 
     loop {
         use std::io::Write;
@@ -48,27 +48,34 @@ fn set_assignment(args: &Vec<&str>, game: &mut simcastle_core::Game) {
         return;
     }
 
-    let char_id;
-    match args[1].parse::<i64>() {
-        Ok(v) => char_id = v,
-        Err(err) => {
-            println!("Error parsing assign: {:?}", err);
-            return;
+    let char_id = parse_character_id(args[1]);
+    let job = parse_job(args[2]);
+
+    char_id.map(|char_id| { job.map(|job| {
+        println!("Making character {} into a {:?}", char_id, job);
+        game.mut_state().mut_workforce().assign(char_id, job);
+    })});
+}
+
+fn parse_job(job_str: &str) -> Option<simcastle_core::workforce::Job> {
+    match job_str {
+        "farmer" => return Some(simcastle_core::workforce::Job::FARMER),
+        _ => {
+            println!("Uknown job: {}", job_str);
+            return None;
+        }
+    }
+}
+
+fn parse_character_id(id_str: &str) -> Option<simcastle_core::character::CharacterId> {
+    match id_str.parse::<i64>() {
+        Ok(v) => return Some(simcastle_core::character::CharacterId(v)),
+        Err(_) => {
+            println!("Error parsing character id: {}", id_str);
+            return None;
         },
     }
 
-
-    let job = match args[2] {
-        "farmer" => simcastle_core::workforce::Job::FARMER,
-        _ => {
-            println!("Uknown job: {}", args[2]);
-            return;
-        }
-    };
-
-    println!("Making character {} into a {:?}", char_id, job);
-    game.mut_state().mut_workforce().assign(
-        simcastle_core::character::CharacterId(char_id), job);
 }
 
 fn print_assignments(game: &simcastle_core::Game) {
