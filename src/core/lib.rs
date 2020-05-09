@@ -22,9 +22,4 @@ impl Game {
     pub fn mut_state(&mut self) -> &mut gamestate::GameState {
         return &mut self.state;
     }
-
-    // XXX
-    pub fn food_production(&self) -> i32 {
-        return economy::food_production(self.state.workforce());
-    }
 }
