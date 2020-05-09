@@ -11,7 +11,7 @@ pub enum Trait {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct CharacterId(i64);
+pub struct CharacterId(pub i64);
 
 impl std::fmt::Display for CharacterId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

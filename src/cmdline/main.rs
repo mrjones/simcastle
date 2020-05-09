@@ -31,7 +31,7 @@ fn main() {
             "q" | "quit" => break,
             "vpop" | "population" => print_workforce(&game),
             "va" | "assignments" => print_assignments(&game),
-            "assign" => set_assignment(&input_array),
+            "assign" => set_assignment(&input_array, &mut game),
             "t" | "turn" => {
                 game.mut_state().advance_turn();
                 print_state(&game);
@@ -41,9 +41,34 @@ fn main() {
     }
 }
 
-fn set_assignment(args: &Vec<&str>) {
+fn set_assignment(args: &Vec<&str>, game: &mut simcastle_core::Game) {
     assert_eq!(args[0], "assign");
-    println!("Parsing: {}", args.join(" "));
+    if args.len() != 3 {
+        println!("Invalid assign: assign <char_id> <job>");
+        return;
+    }
+
+    let char_id;
+    match args[1].parse::<i64>() {
+        Ok(v) => char_id = v,
+        Err(err) => {
+            println!("Error parsing assign: {:?}", err);
+            return;
+        },
+    }
+
+
+    let job = match args[2] {
+        "farmer" => simcastle_core::workforce::Job::FARMER,
+        _ => {
+            println!("Uknown job: {}", args[2]);
+            return;
+        }
+    };
+
+    println!("Making character {} into a {:?}", char_id, job);
+    game.mut_state().mut_workforce().assign(
+        simcastle_core::character::CharacterId(char_id), job);
 }
 
 fn print_assignments(game: &simcastle_core::Game) {
