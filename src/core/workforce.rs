@@ -1,6 +1,6 @@
 use super::character;
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Job {
     FARMER,
 }
