@@ -1,17 +1,21 @@
 use simcastle_core;
 
 fn main() {
-    let mut g = simcastle_core::Game::new();
+    let spec = simcastle_core::gamestate::GameSpec{
+        initial_characters: 3,
+    };
 
-    for ref c in g.workforce().population() {
+    let mut game = simcastle_core::Game::new(spec);
+
+    for ref c in game.state().workforce().population() {
         println!(" - {}", c.full_debug_string());
     }
 
-    println!("Initial Food: {}", g.food_production());
+    println!("Initial Food: {}", game.food_production());
     {
-        let workforce = g.mut_workforce();
+        let workforce = game.mut_state().mut_workforce();
         let worker_id = workforce.population().iter().nth(0).expect("1 worker").id().clone();
         workforce.assign(worker_id, simcastle_core::workforce::Job::FARMER);
     }
-    println!("Final Food: {}", g.food_production());
+    println!("Final Food: {}", game.food_production());
 }
