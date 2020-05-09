@@ -5,7 +5,7 @@ fn main() {
     let g = simcastle_core::Game::new();
 
     for ref c in g.characters() {
-        println!(" - {}", c.name());
+        println!(" - {}", c.full_debug_string());
     }
 
 }

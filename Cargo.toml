@@ -16,3 +16,4 @@ path = "src/cmdline/main.rs"
 
 [dependencies]
 rand = "*"
+rand_distr = "*"

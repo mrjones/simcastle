@@ -12,7 +12,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         return Game{
-            characters: (0..5).map(|_| character::Character::new_with_random_name()).collect(),
+            characters: (0..5).map(|_| character::Character::new_random()).collect(),
         }
     }
 
