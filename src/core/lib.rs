@@ -1,6 +1,8 @@
 pub mod character;
 pub mod workforce;
 
+mod economy;
+
 pub struct Game {
     workforce: workforce::Workforce,
 }
@@ -24,17 +26,6 @@ impl Game {
 
     // XXX
     pub fn food_production(&self) -> i32 {
-        let mut production: i32 = 0;
-        for (id, job) in self.workforce.assignments() {
-            if *job == workforce::Job::FARMER {
-                let c = self.workforce.character_with_id(id.clone()).expect("food_production::character_with_id");
-                production += 10;
-                if c.get_trait(character::Trait::INTELLIGENCE) > 55 {
-                    production += 1;
-                }
-            }
-        }
-
-        return production;
+        return economy::food_production(&self.workforce);
     }
 }

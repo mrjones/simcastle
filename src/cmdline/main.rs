@@ -9,9 +9,9 @@ fn main() {
 
     println!("Initial Food: {}", g.food_production());
     {
-        let mut workforce = g.mut_workforce();
-        let worker = workforce.population().iter().nth(0).expect("1 worker");
-        workforce.assign(worker.id(), simcastle_core::workforce::Job::FARMER);
+        let workforce = g.mut_workforce();
+        let worker_id = workforce.population().iter().nth(0).expect("1 worker").id().clone();
+        workforce.assign(worker_id, simcastle_core::workforce::Job::FARMER);
     }
     println!("Final Food: {}", g.food_production());
 }
