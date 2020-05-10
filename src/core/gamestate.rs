@@ -11,6 +11,7 @@ pub struct GameState {
     workforce: workforce::Workforce,
     castle: castle::Castle,
     pub turn: i32,
+
     pub food: i32,
 }
 
@@ -25,15 +26,20 @@ impl GameState {
             turn: 0,
             food: 2 * spec.initial_characters,
         }
-
     }
 
     // TODO(mrjones): Make GameState immutable, and make this return a copy?
     pub fn advance_turn(&mut self) {
         self.turn = self.turn + 1;
+
+        // TODO(mrjones): Starvation
         self.food = std::cmp::min(
             self.castle.food_storage,
-            self.food + economy::food_production(&self.workforce) - self.workforce.population().len() as i32);
+            self.food + self.food_delta());
+    }
+
+    pub fn food_delta(&self) -> i32 {
+        return economy::food_production(&self.workforce) - self.workforce.population().len() as i32;
     }
 
     pub fn workforce(&self) -> &workforce::Workforce {

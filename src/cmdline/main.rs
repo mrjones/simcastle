@@ -8,12 +8,7 @@ fn main() {
     let mut game = simcastle_core::Game::new(spec);
 
     print_workforce(&game);
-
-//    {
-//        let workforce = game.mut_state().mut_workforce();
-//        let worker_id = workforce.population().iter().nth(0).expect("1 worker").id().clone();
-//        workforce.assign(worker_id, simcastle_core::workforce::Job::FARMER);
-//    }
+    print_state(&game);
 
     loop {
         use std::io::Write;
@@ -90,6 +85,14 @@ fn print_workforce(game: &simcastle_core::Game) {
     }
 }
 
+fn format_delta(x: i32) -> String {
+    if x <= 0 {
+        return format!("{}", x);
+    } else {
+        return format!("+{}", x)
+    }
+}
+
 fn print_state(game: &simcastle_core::Game) {
-    println!("Turn: {}, Food: {}", game.state().turn, game.state().food);
+    println!("Turn: {}, Food: {}/{} ({})", game.state().turn, game.state().food, game.state().castle().food_storage, format_delta(game.state().food_delta()));
 }
