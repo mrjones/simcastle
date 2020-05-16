@@ -3,6 +3,8 @@ use super::character;
 use super::economy;
 use super::workforce;
 
+use rand::Rng;
+
 pub struct GameSpec {
     pub initial_characters: i32,
 }
@@ -13,8 +15,13 @@ pub struct GameState {
     pub turn: i32,
 
     pub food: i32,
+
+    character_gen: character::CharacterFactory,
 }
 
+pub enum Prompt {
+    AsylumSeeker(character::Character),
+}
 
 impl GameState {
     pub fn init(spec: GameSpec) -> GameState {
@@ -25,17 +32,26 @@ impl GameState {
             castle: castle::Castle::new(),
             turn: 0,
             food: 2 * spec.initial_characters,
+            character_gen: character_gen,
         }
     }
 
     // TODO(mrjones): Make GameState immutable, and make this return a copy?
-    pub fn advance_turn(&mut self) {
+    pub fn advance_turn(&mut self) -> Vec<Prompt> {
         self.turn = self.turn + 1;
 
         // TODO(mrjones): Starvation
         self.food = std::cmp::min(
             self.castle.food_storage,
             self.food + self.food_delta());
+
+
+        let mut prompts = vec![];
+        if rand::thread_rng().gen_bool(0.1) {
+            prompts.push(Prompt::AsylumSeeker(
+                self.character_gen.new_character()));
+        }
+        return prompts;
     }
 
     pub fn food_delta(&self) -> i32 {
@@ -52,5 +68,9 @@ impl GameState {
 
     pub fn castle(&self) -> &castle::Castle {
         return &self.castle;
+    }
+
+    pub fn accept_asylum_seeker(&mut self, c: character::Character) {
+        self.workforce.add_to_population(c);
     }
 }

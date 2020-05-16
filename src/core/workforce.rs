@@ -33,4 +33,8 @@ impl Workforce {
     pub fn assignments(&self) -> &std::collections::HashMap<character::CharacterId, Job> {
         return &self.assignments;
     }
+
+    pub fn add_to_population(&mut self, c: character::Character) {
+        self.population.push(c);
+    }
 }
