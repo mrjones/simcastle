@@ -11,16 +11,6 @@ fn main() {
     print_state(&game);
 
     loop {
-        /*
-        use std::io::Write;
-
-        let mut input = String::new();
-        print!("> ");
-        std::io::stdout().flush().expect("stdout flush");
-        std::io::stdin().read_line(&mut input).expect("stdin::read_to_string");
-        let input_lower = input.to_ascii_lowercase();
-        let input_array = input_lower.trim_end_matches('\n').split(" ").collect::<Vec<&str>>();
-         */
         let input_array = get_input_line("> ");
         if input_array.len() == 0 { continue; }
 
@@ -28,7 +18,8 @@ fn main() {
             "help" => println!("<help text goes here>"),
             "q" | "quit" => break,
             "vpop" | "population" => print_workforce(&game),
-            "va" | "assignments" => print_assignments(&game),
+            "vt" | "teams" => print_teams(&game),
+            "s" | "state" => print_state(&game),
             "assign" => set_assignment(&input_array, &mut game),
             "t" | "turn" => {
                 let prompts = game.mut_state().advance_turn();
@@ -56,9 +47,21 @@ fn handle_prompts(state: &mut simcastle_core::gamestate::GameState, prompts: Vec
         match prompt {
             simcastle_core::gamestate::Prompt::AsylumSeeker(c) => {
                 println!("Seeking asylum: {}", c.full_debug_string());
-                let input_array = get_input_line("Accept? (y/n) > ");
-                if input_array.len() > 0 && input_array[0].len() > 0 && input_array[0].chars().next().unwrap() == 'y' {
-                    state.accept_asylum_seeker(c);
+                loop {
+                    let input_array = get_input_line("Accept? (y/n) > ");
+                    if input_array.len() > 0 && input_array[0].len() == 1 {
+                        match input_array[0].chars().next() {
+                            Some('y') => {
+                                state.accept_asylum_seeker(c);
+                                break;
+                            },
+                            Some('n') => {
+                                break;
+                            },
+                            _ => {}
+                        }
+                    }
+                    println!("'y' or 'n'");
                 }
             },
         }
@@ -102,9 +105,11 @@ fn parse_character_id(id_str: &str) -> Option<simcastle_core::character::Charact
 
 }
 
-fn print_assignments(game: &simcastle_core::Game) {
-    for (char_id, job) in game.state().workforce().assignments() {
-        println!("{} is a {:?}", char_id, job);
+fn print_teams(game: &simcastle_core::Game) {
+    println!("[[FARMERS]]");
+    for char_id in game.state().workforce().farmers().members() {
+        let c = game.state().workforce().character_with_id(char_id.clone());
+        println!("{:?}", c.unwrap().full_debug_string());
     }
 }
 
