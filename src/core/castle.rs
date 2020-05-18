@@ -1,11 +1,13 @@
+use super::types;
+
 pub struct Castle {
-    pub food_storage: i32,
+    pub food_storage: types::Millis,
 }
 
 impl Castle {
     pub fn new() -> Castle {
         return Castle {
-            food_storage: 50,
+            food_storage: types::Millis::from_i32(50),
         };
     }
 }

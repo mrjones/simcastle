@@ -114,8 +114,8 @@ fn print_workforce(game: &simcastle_core::Game) {
     }
 }
 
-fn format_delta(x: i32) -> String {
-    if x <= 0 {
+fn format_delta(x: simcastle_core::types::Millis) -> String {
+    if x <= simcastle_core::types::Millis::from_i32(0) {
         return format!("{}", x);
     } else {
         return format!("+{}", x)

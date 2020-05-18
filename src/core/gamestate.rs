@@ -1,6 +1,7 @@
 use super::castle;
 use super::character;
 use super::economy;
+use super::types;
 use super::workforce;
 
 use rand::Rng;
@@ -14,7 +15,7 @@ pub struct GameState {
     castle: castle::Castle,
     pub turn: i32,
 
-    pub food: i32,
+    pub food: types::Millis,
 
     character_gen: character::CharacterFactory,
 }
@@ -31,7 +32,7 @@ impl GameState {
                 (0..spec.initial_characters).map(|_| character_gen.new_character()).collect::<Vec<character::Character>>()),
             castle: castle::Castle::new(),
             turn: 0,
-            food: 2 * spec.initial_characters,
+            food: types::Millis::from_i32(2 * spec.initial_characters),
             character_gen: character_gen,
         }
     }
@@ -54,8 +55,10 @@ impl GameState {
         return prompts;
     }
 
-    pub fn food_delta(&self) -> i32 {
-        return economy::food_production(&self.workforce) - self.workforce.population().len() as i32;
+    pub fn food_delta(&self) -> types::Millis {
+        // 1.0 per person.. for now
+        let consumption = types::Millis::from_i32(self.workforce.population().len() as i32);
+        return economy::food_production(&self.workforce) - consumption;
     }
 
     pub fn workforce(&self) -> &workforce::Workforce {
