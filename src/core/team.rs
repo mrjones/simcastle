@@ -26,4 +26,16 @@ impl Team {
     pub fn members(&self) -> &std::collections::HashSet<character::CharacterId> {
         return &self.members;
     }
+
+    // Scale factor: 0.0 == average, +/- 1.0 per stddev
+    pub fn harmony(&self) -> f32 {
+        // Factors: turns working together
+        // Leadership:
+        // Trait matching:
+        return 0.0;
+    }
+
+    pub fn advance_turn(&self) {
+
+    }
 }

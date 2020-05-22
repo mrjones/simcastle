@@ -13,5 +13,8 @@ pub fn food_production(farmers: &team::Team, workforce: &workforce::Workforce) -
         }
     }
 
+    // 10% boost per std-dev of harmony.
+    production = production * (1.0 + farmers.harmony() * 0.1);
+
     return types::Millis::from_f32(production);
 }

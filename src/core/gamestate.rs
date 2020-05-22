@@ -46,6 +46,7 @@ impl GameState {
             self.castle.food_storage,
             self.food + self.food_delta());
 
+        self.workforce.advance_turn();
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {

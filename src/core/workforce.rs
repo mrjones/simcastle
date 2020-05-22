@@ -13,13 +13,18 @@ pub struct Workforce {
     unassigned: team::Team,
 }
 
-impl  Workforce {
+impl Workforce {
     pub fn new(population: Vec<character::Character>) -> Workforce {
         return Workforce {
             population: population,
             farmers: team::Team::new(),
             unassigned: team::Team::new(),
         }
+    }
+
+    pub fn advance_turn(&mut self) {
+        self.farmers.advance_turn();
+        self.unassigned.advance_turn();
     }
 
     pub fn assign(&mut self, char_id: character::CharacterId, job: Job) {
