@@ -1,6 +1,7 @@
 pub mod castle;
 pub mod character;
 pub mod gamestate;
+pub mod population;
 pub mod team;
 pub mod types;
 pub mod workforce;

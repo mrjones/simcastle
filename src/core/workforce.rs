@@ -1,4 +1,5 @@
 use super::character;
+use super::population;
 use super::team;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -7,14 +8,15 @@ pub enum Job {
 }
 
 pub struct Workforce {
-    population: Vec<character::Character>,
+    // TODO(mrjone): Make population owned elsewhere?
+    population: population::Population,
 
     farmers: team::Team,
     unassigned: team::Team,
 }
 
 impl Workforce {
-    pub fn new(population: Vec<character::Character>) -> Workforce {
+    pub fn new(population: population::Population) -> Workforce {
         return Workforce {
             population: population,
             farmers: team::Team::new(),
@@ -36,16 +38,12 @@ impl Workforce {
         }
     }
 
-    pub fn population(&self) -> &Vec<character::Character> {
+    pub fn population(&self) -> &population::Population {
         return &self.population;
     }
 
-    pub fn character_with_id(&self, id: character::CharacterId) -> Option<&character::Character> {
-        return self.population.iter().find(|c| c.id() == id);
-    }
-
-    pub fn add_to_population(&mut self, c: character::Character) {
-        self.population.push(c);
+    pub fn mut_population(&mut self) -> &mut population::Population {
+        return &mut self.population;
     }
 
     pub fn farmers(&self) -> &team::Team {

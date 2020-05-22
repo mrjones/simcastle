@@ -1,6 +1,7 @@
 use super::castle;
 use super::character;
 use super::economy;
+use super::population;
 use super::types;
 use super::workforce;
 
@@ -29,7 +30,8 @@ impl GameState {
         let character_gen = character::CharacterFactory::new();
         return GameState{
             workforce: workforce::Workforce::new(
-                (0..spec.initial_characters).map(|_| character_gen.new_character()).collect::<Vec<character::Character>>()),
+                population::Population::new(
+                    (0..spec.initial_characters).map(|_| character_gen.new_character()).collect::<Vec<character::Character>>())),
             castle: castle::Castle::new(),
             turn: 0,
             food: types::Millis::from_i32(2 * spec.initial_characters),
@@ -58,7 +60,7 @@ impl GameState {
 
     pub fn food_delta(&self) -> types::Millis {
         // 1.0 per person.. for now
-        let consumption = types::Millis::from_i32(self.workforce.population().len() as i32);
+        let consumption = types::Millis::from_i32(self.workforce.population().characters().len() as i32);
         return economy::food_production(self.workforce.farmers(), &self.workforce) - consumption;
     }
 
@@ -75,6 +77,6 @@ impl GameState {
     }
 
     pub fn accept_asylum_seeker(&mut self, c: character::Character) {
-        self.workforce.add_to_population(c);
+        self.workforce.mut_population().add(c);
     }
 }
