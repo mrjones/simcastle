@@ -108,13 +108,13 @@ fn parse_character_id(id_str: &str) -> Option<simcastle_core::character::Charact
 fn print_teams(game: &simcastle_core::Game) {
     println!("[[FARMERS]]");
     for char_id in game.state().workforce().farmers().members() {
-        let c = game.state().workforce().population().character_with_id(char_id.clone());
+        let c = game.state().population().character_with_id(char_id.clone());
         println!("{:?}", c.unwrap().full_debug_string());
     }
 }
 
 fn print_workforce(game: &simcastle_core::Game) {
-    for ref c in game.state().workforce().population().characters() {
+    for ref c in game.state().population().characters() {
         println!(" - {}", c.full_debug_string());
     }
 }
