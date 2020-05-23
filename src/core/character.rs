@@ -8,6 +8,7 @@ use rand::Rng;
 pub enum Trait {
     INTELLIGENCE,
     STRENGTH,
+    WORK_ETHIC,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -20,7 +21,7 @@ impl std::fmt::Display for CharacterId {
 }
 
 pub fn all_traits() -> Vec<Trait> {
-    return vec![Trait::INTELLIGENCE, Trait::STRENGTH];
+    return vec![Trait::INTELLIGENCE, Trait::STRENGTH, Trait::WORK_ETHIC];
 }
 
 pub struct CharacterFactory {
@@ -68,9 +69,8 @@ impl Character {
     }
 
     pub fn full_debug_string(&self) -> String {
-        return format!("[{}/{}] traits:{}",
-                       self.id, self.name,
-                       self.traits.iter().map(|(t, v)| format!("{:?}:{}", t, v)).collect::<Vec<String>>().join(" "));
+        let traits_str = all_traits().iter().map(|t| format!("{:?}:{}", t, self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
+        return format!("[{}/{}] traits:{}", self.id, self.name, traits_str);
     }
 }
 
