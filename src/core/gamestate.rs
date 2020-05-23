@@ -29,10 +29,12 @@ pub enum Prompt {
 impl GameState {
     pub fn init(spec: GameSpec) -> GameState {
         let character_gen = character::CharacterFactory::new();
+
+        let initial_characters = (0..spec.initial_characters).map(|_| character_gen.new_character()).collect::<Vec<character::Character>>();
         return GameState{
-            workforce: workforce::Workforce::new(),
-            population: population::Population::new(
-                (0..spec.initial_characters).map(|_| character_gen.new_character()).collect::<Vec<character::Character>>()),
+            workforce: workforce::Workforce::new(
+                initial_characters.iter().map(character::Character::id).collect()),
+            population: population::Population::new(initial_characters),
             castle: castle::Castle::new(),
             turn: 0,
             food: types::Millis::from_i32(2 * spec.initial_characters),
@@ -50,6 +52,10 @@ impl GameState {
             self.food + self.food_delta());
 
         self.workforce.advance_turn();
+
+        for (c1, c2) in self.workforce.farmers().member_pairs() {
+            self.population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
+        }
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {
@@ -86,6 +92,8 @@ impl GameState {
     }
 
     pub fn accept_asylum_seeker(&mut self, c: character::Character) {
+        let cid = c.id();
         self.population.add(c);
+        self.workforce.add_unassigned(cid);
     }
 }

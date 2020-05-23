@@ -1,5 +1,7 @@
 use super::character;
 
+use itertools::Itertools;
+
 pub struct Team {
     members: std::collections::HashSet<character::CharacterId>,
 }
@@ -9,6 +11,12 @@ impl Team {
         return Team{
             members: std::collections::HashSet::new(),
         };
+    }
+
+    pub fn new_with_ids(initial_ids: std::collections::HashSet<character::CharacterId>) -> Team {
+        return Team{
+            members: initial_ids,
+        }
     }
 
     pub fn add(&mut self, id: &character::CharacterId) {
@@ -25,6 +33,13 @@ impl Team {
 
     pub fn members(&self) -> &std::collections::HashSet<character::CharacterId> {
         return &self.members;
+    }
+
+    pub fn member_pairs(&self) -> Vec<(character::CharacterId, character::CharacterId)>{
+        return self.members().iter().combinations(2).map(|v| {
+            assert_eq!(2, v.len());
+            return (*v[0], *v[1]);
+        }).collect();
     }
 
     // Scale factor: 0.0 == average, +/- 1.0 per stddev

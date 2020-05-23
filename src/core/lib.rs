@@ -8,6 +8,8 @@ pub mod workforce;
 
 mod economy;
 
+extern crate itertools;
+
 pub struct Game {
     state: gamestate::GameState,
 }

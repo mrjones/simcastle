@@ -10,7 +10,7 @@ pub enum Trait {
     STRENGTH,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CharacterId(pub i64);
 
 impl std::fmt::Display for CharacterId {

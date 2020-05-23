@@ -13,8 +13,24 @@ pub fn food_production(farmers: &team::Team, population: &population::Population
         }
     }
 
-    // 10% boost per std-dev of harmony.
-    production = production * (1.0 + farmers.harmony() * 0.1);
+    if farmers.members().len() > 1 {
+        let mut total_cotenure: i32 = 0;
+        let mut num_pairs: i32 = 0;
+        for (c1, c2) in farmers.member_pairs() {
+            total_cotenure += population.rapport_tracker().turns_on_same_team(&c1, &c2);
+            num_pairs += 1;
+        }
+
+        let average_tenure: f32 = total_cotenure as f32 / num_pairs as f32;
+
+        if average_tenure > 0.0 {
+            let tenure_boost = 1.0 + (average_tenure.log(100.0) / 3.0);
+            println!("Base prod: {}. Avg tenure: {}, Tenure boost: {}", production, average_tenure, tenure_boost);
+
+            production *= tenure_boost;
+            println!("Boosted prod: {}", production);
+        }
+    }
 
     return types::Millis::from_f32(production);
 }
