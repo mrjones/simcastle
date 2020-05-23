@@ -8,7 +8,7 @@ pub fn food_production(farmers: &team::Team, population: &population::Population
     for id in farmers.members() {
         let c = population.character_with_id(id.clone()).expect("food_production::character_with_id");
         production += 1.0;
-        if c.get_trait(character::Trait::INTELLIGENCE) > 60 {
+        if c.get_trait(character::Trait::Intelligence) > 60 {
             production += 0.1;
         }
     }

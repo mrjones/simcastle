@@ -16,5 +16,6 @@ path = "src/cmdline/main.rs"
 
 [dependencies]
 itertools = "*"
+maplit = "*"
 rand = "*"
 rand_distr = "*"

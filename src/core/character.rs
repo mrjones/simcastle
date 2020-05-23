@@ -1,3 +1,4 @@
+extern crate maplit;
 extern crate rand;
 extern crate rand_distr;
 extern crate std;
@@ -6,9 +7,13 @@ use rand::Rng;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Trait {
-    INTELLIGENCE,
-    STRENGTH,
-    WORK_ETHIC,
+    Intelligence,
+    Strength,
+    WorkEthic,
+}
+
+pub struct TraitInfo {
+    pub string3: String,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -21,7 +26,21 @@ impl std::fmt::Display for CharacterId {
 }
 
 pub fn all_traits() -> Vec<Trait> {
-    return vec![Trait::INTELLIGENCE, Trait::STRENGTH, Trait::WORK_ETHIC];
+    return vec![Trait::Intelligence, Trait::Strength, Trait::WorkEthic];
+}
+
+pub fn all_trait_infos() -> std::collections::HashMap<Trait, TraitInfo> {
+    return maplit::hashmap!{
+        Trait::Intelligence => TraitInfo{
+            string3: "INT".to_string(),
+        },
+        Trait::Strength => TraitInfo{
+            string3: "STR".to_string(),
+        },
+        Trait::WorkEthic => TraitInfo{
+            string3: "WOR".to_string(),
+        }
+    };
 }
 
 pub struct CharacterFactory {
@@ -69,8 +88,9 @@ impl Character {
     }
 
     pub fn full_debug_string(&self) -> String {
-        let traits_str = all_traits().iter().map(|t| format!("{:?}:{}", t, self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
-        return format!("[{}/{}] traits:{}", self.id, self.name, traits_str);
+        let trait_infos = all_trait_infos();
+        let traits_str = all_traits().iter().map(|t| format!("{}:{}", trait_infos.get(t).unwrap().string3, self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
+        return format!("[{:03}|{:10}] {}", self.id.0, self.name, traits_str);
     }
 }
 
