@@ -65,10 +65,13 @@ impl GameState {
         return prompts;
     }
 
+    pub fn food_economy(&self) -> economy::FoodEconomy {
+        return economy::food(self.workforce.farmers(), &self.population);
+    }
+
     pub fn food_delta(&self) -> types::Millis {
-        // 1.0 per person.. for now
-        let consumption = types::Millis::from_i32(self.population.characters().len() as i32);
-        return economy::food_production(self.workforce.farmers(), &self.population) - consumption;
+        let food_economy = self.food_economy();
+        return food_economy.produced_per_turn - food_economy.consumed_per_turn;
     }
 
     pub fn population(&self) -> &population::Population {

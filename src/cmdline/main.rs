@@ -20,6 +20,7 @@ fn main() {
             "vpop" | "population" => print_workforce(&game),
             "vt" | "teams" => print_teams(&game),
             "s" | "state" => print_state(&game),
+            "f" | "food" => print_food(&game),
             "assign" => set_assignment(&input_array, &mut game),
             "t" | "turn" => {
                 let prompts = game.mut_state().advance_turn();
@@ -129,4 +130,14 @@ fn format_delta(x: simcastle_core::types::Millis) -> String {
 
 fn print_state(game: &simcastle_core::Game) {
     println!("Turn: {}, Food: {}/{} ({})", game.state().turn, game.state().food, game.state().castle().food_storage, format_delta(game.state().food_delta()));
+}
+
+fn print_food(game: &simcastle_core::Game) {
+    let econ = game.state().food_economy();
+    println!("  Produced: {} = (base:{} + skills:{}) * teamwork:{}",
+             econ.produced_per_turn,
+             econ.base_production, econ.skills_boost, econ.cotenure_boost);
+    println!("- Consumed: {}", econ.consumed_per_turn);
+    println!("=================");
+    println!("= Net:      {}", econ.produced_per_turn - econ.consumed_per_turn);
 }
