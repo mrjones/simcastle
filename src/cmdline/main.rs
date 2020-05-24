@@ -134,10 +134,10 @@ fn print_state(game: &simcastle_core::Game) {
 
 fn print_food(game: &simcastle_core::Game) {
     let econ = game.state().food_economy();
-    println!("  Produced: {} = (base:{} + skills:{}) * teamwork:{}",
+    println!("  Produced: {:.2} = (base:{:.2} + skills:{:.2}) * teamwork:{:.2}",
              econ.produced_per_turn,
              econ.base_production, econ.skills_boost, econ.cotenure_boost);
-    println!("- Consumed: {}", econ.consumed_per_turn);
+    println!("- Consumed: {:.2}", econ.consumed_per_turn);
     println!("=================");
-    println!("= Net:      {}", econ.produced_per_turn - econ.consumed_per_turn);
+    println!("= Net:      {:.2}", econ.produced_per_turn - econ.consumed_per_turn);
 }
