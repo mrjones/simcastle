@@ -35,7 +35,7 @@ impl GameState {
             workforce: workforce::Workforce::new(
                 initial_characters.iter().map(character::Character::id).collect()),
             population: population::Population::new(initial_characters),
-            castle: castle::Castle::new(),
+            castle: castle::Castle::init(&spec),
             turn: 0,
             food: types::Millis::from_i32(2 * spec.initial_characters),
             character_gen: character_gen,
@@ -48,7 +48,7 @@ impl GameState {
 
         // TODO(mrjones): Starvation
         self.food = std::cmp::min(
-            self.castle.food_storage,
+            self.castle.food_infrastructure.food_storage,
             self.food + self.food_delta());
 
         self.workforce.advance_turn();
@@ -66,7 +66,7 @@ impl GameState {
     }
 
     pub fn food_economy(&self) -> economy::FoodEconomy {
-        return economy::food(self.workforce.farmers(), &self.population);
+        return economy::food(self.workforce.farmers(), &self.castle.food_infrastructure, &self.population);
     }
 
     pub fn food_delta(&self) -> types::Millis {

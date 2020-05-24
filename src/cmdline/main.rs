@@ -129,7 +129,7 @@ fn format_delta(x: simcastle_core::types::Millis) -> String {
 }
 
 fn print_state(game: &simcastle_core::Game) {
-    println!("Turn: {}, Food: {}/{} ({})", game.state().turn, game.state().food, game.state().castle().food_storage, format_delta(game.state().food_delta()));
+    println!("Turn: {}, Food: {}/{} ({})", game.state().turn, game.state().food, game.state().castle().food_infrastructure.food_storage, format_delta(game.state().food_delta()));
 }
 
 fn print_food(game: &simcastle_core::Game) {

@@ -1,3 +1,4 @@
+use super::castle;
 use super::character;
 use super::population;
 use super::team;
@@ -12,7 +13,7 @@ pub struct FoodEconomy {
     pub cotenure_boost: f32,
 }
 
-pub fn food(farmers: &team::Team, population: &population::Population) -> FoodEconomy {
+pub fn food(farmers: &team::Team, _food_infrastructure: &castle::FoodInfrastructure, population: &population::Population) -> FoodEconomy {
     let base_production: f32 = farmers.members().len() as f32;
     let mut production: f32 = base_production;
 
