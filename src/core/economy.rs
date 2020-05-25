@@ -20,6 +20,15 @@ impl SkillModel {
         }
         return skill_stdevs;
     }
+
+    pub fn team_skill_boost(&self, team: &team::Team, population: &population::Population) -> f32 {
+        let mut skills_boost = 0.0;
+        for id in team.members() {
+            let c = population.character_with_id(id.clone()).expect("food_production::character_with_id");
+            skills_boost += self.character_skill_boost(c);
+        }
+        return skills_boost;
+    }
 }
 
 pub struct FoodEconomy {
@@ -43,11 +52,7 @@ pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructu
         character::Trait::WorkEthic => 0.1,
     });
 
-    let mut skills_boost: f32 = 0.0;
-    for id in farmers.members() {
-        let c = population.character_with_id(id.clone()).expect("food_production::character_with_id");
-        skills_boost += skill_model.character_skill_boost(c);
-    }
+    let skills_boost = skill_model.team_skill_boost(farmers, population);
     production = production + skills_boost;
 
     let mut cotenure_boost = 1.0;
