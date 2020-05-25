@@ -2,11 +2,27 @@ use simcastle_core;
 
 fn main() {
     let spec = simcastle_core::gamestate::GameSpec{
+        initial_potential_characters: 6,
         initial_characters: 3,
     };
 
     let setup = simcastle_core::initialsetup::InitialSetup::new(spec);
-    let mut game = setup.begin();
+
+    println!("Potential team:");
+    for c in &setup.character_candidates {
+        println!("{}", c.full_debug_string());
+    }
+
+    let mut team = std::collections::HashSet::new();
+    while team.len() < setup.spec().initial_characters {
+        let prompt = format!("Pick {} more: ", setup.spec().initial_characters - team.len());
+        for char_id_string in &get_input_line(&prompt) {
+            let char_id = parse_character_id(char_id_string).expect(&format!("Could not parse id: {}", char_id_string));
+            team.insert(char_id);
+        }
+    }
+
+    let mut game = setup.begin(team);
 
     print_workforce(&game);
     print_state(&game);

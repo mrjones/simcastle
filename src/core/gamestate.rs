@@ -8,7 +8,8 @@ use super::workforce;
 use rand::Rng;
 
 pub struct GameSpec {
-    pub initial_characters: i32,
+    pub initial_potential_characters: usize,
+    pub initial_characters: usize,
 }
 
 pub struct GameState {
@@ -18,7 +19,6 @@ pub struct GameState {
     pub turn: i32,
 
     pub food: types::Millis,
-
     character_gen: character::CharacterFactory,
 }
 
@@ -27,17 +27,17 @@ pub enum Prompt {
 }
 
 impl GameState {
-    pub fn init(spec: GameSpec) -> GameState {
-        let character_gen = character::CharacterFactory::new();
-
-        let initial_characters = (0..spec.initial_characters).map(|_| character_gen.new_character()).collect::<Vec<character::Character>>();
+    pub fn init(spec: GameSpec, initial_characters: Vec<character::Character>, character_gen: character::CharacterFactory) -> GameState {
+        assert_eq!(initial_characters.len(), spec.initial_characters as usize,
+                   "Please pick {} initial characters ({} selected)",
+                   spec.initial_characters, initial_characters.len());
         return GameState{
             workforce: workforce::Workforce::new(
                 initial_characters.iter().map(character::Character::id).collect()),
             population: population::Population::new(initial_characters),
             castle: castle::Castle::init(&spec),
             turn: 0,
-            food: types::Millis::from_i32(2 * spec.initial_characters),
+            food: types::Millis::from_i32(2 * spec.initial_characters as i32),
             character_gen: character_gen,
         }
     }

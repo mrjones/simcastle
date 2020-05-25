@@ -16,7 +16,7 @@ impl Castle {
             food_infrastructure: FoodInfrastructure {
                 food_storage: types::Millis::from_i32(50),
                 // 1 acre per character
-                acres_of_farmland: spec.initial_characters,
+                acres_of_farmland: spec.initial_characters as i32,
             },
         };
     }
