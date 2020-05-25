@@ -5,7 +5,7 @@ extern crate std;
 
 use rand::Rng;
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Trait {
     Intelligence,
     Strength,

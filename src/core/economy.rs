@@ -4,6 +4,24 @@ use super::population;
 use super::team;
 use super::types;
 
+pub struct SkillModel {
+    weights: std::collections::HashMap<character::Trait, f32>,
+}
+
+impl SkillModel {
+    pub fn new(weights: std::collections::HashMap<character::Trait, f32>) -> SkillModel {
+        return SkillModel{weights: weights};
+    }
+
+    pub fn character_skill_boost(&self, c: &character::Character) -> f32 {
+        let mut skill_stdevs = 0.0;
+        for (t, weight) in &self.weights {
+            skill_stdevs += weight * (c.get_trait(*t) as f32 - 50.0) / 10.0;
+        }
+        return skill_stdevs;
+    }
+}
+
 pub struct FoodEconomy {
     pub produced_per_turn: types::Millis,
     pub consumed_per_turn: types::Millis,
@@ -20,15 +38,16 @@ pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructu
         std::cmp::min(food_infrastructure.acres_of_farmland, farmers.members().len() as i32) as f32;
     let mut production: f32 = base_production;
 
-    let mut skill_stdevs: f32 = 0.0;
+    let skill_model = SkillModel::new(maplit::hashmap!{
+        character::Trait::Intelligence => 0.05,
+        character::Trait::WorkEthic => 0.1,
+    });
+
+    let mut skills_boost: f32 = 0.0;
     for id in farmers.members() {
         let c = population.character_with_id(id.clone()).expect("food_production::character_with_id");
-
-        for t in vec![character::Trait::Intelligence, character::Trait::WorkEthic] {
-            skill_stdevs += (c.get_trait(t) as f32 - 50.0) / 10.0;
-        }
+        skills_boost += skill_model.character_skill_boost(c);
     }
-    let skills_boost = skill_stdevs / 10.0;
     production = production + skills_boost;
 
     let mut cotenure_boost = 1.0;
