@@ -5,7 +5,8 @@ fn main() {
         initial_characters: 3,
     };
 
-    let mut game = simcastle_core::Game::new(spec);
+    let setup = simcastle_core::initialsetup::InitialSetup::new(spec);
+    let mut game = setup.begin();
 
     print_workforce(&game);
     print_state(&game);
@@ -23,8 +24,8 @@ fn main() {
             "f" | "food" => print_food(&game),
             "assign" => set_assignment(&input_array, &mut game),
             "t" | "turn" => {
-                let prompts = game.mut_state().advance_turn();
-                handle_prompts(game.mut_state(), prompts);
+                let prompts = game.advance_turn();
+                handle_prompts(&mut game, prompts);
                 print_state(&game);
             }
             _ => println!("Unknown command: {}", input_array.join(" ")),
@@ -69,7 +70,7 @@ fn handle_prompts(state: &mut simcastle_core::gamestate::GameState, prompts: Vec
     }
 }
 
-fn set_assignment(args: &Vec<String>, game: &mut simcastle_core::Game) {
+fn set_assignment(args: &Vec<String>, game: &mut simcastle_core::gamestate::GameState) {
     assert_eq!(args[0], "assign");
     if args.len() != 3 {
         println!("Invalid assign: assign <char_id> <job>");
@@ -81,7 +82,7 @@ fn set_assignment(args: &Vec<String>, game: &mut simcastle_core::Game) {
 
     char_id.map(|char_id| { job.map(|job| {
         println!("Making character {} into a {:?}", char_id, job);
-        game.mut_state().mut_workforce().assign(char_id, job);
+        game.mut_workforce().assign(char_id, job);
     })});
 }
 
@@ -106,16 +107,16 @@ fn parse_character_id(id_str: &str) -> Option<simcastle_core::character::Charact
 
 }
 
-fn print_teams(game: &simcastle_core::Game) {
+fn print_teams(game: &simcastle_core::gamestate::GameState) {
     println!("[[FARMERS]]");
-    for char_id in game.state().workforce().farmers().members() {
-        let c = game.state().population().character_with_id(char_id.clone());
+    for char_id in game.workforce().farmers().members() {
+        let c = game.population().character_with_id(char_id.clone());
         println!("{:?}", c.unwrap().full_debug_string());
     }
 }
 
-fn print_workforce(game: &simcastle_core::Game) {
-    for ref c in game.state().population().characters() {
+fn print_workforce(game: &simcastle_core::gamestate::GameState) {
+    for ref c in game.population().characters() {
         println!(" - {}", c.full_debug_string());
     }
 }
@@ -128,12 +129,12 @@ fn format_delta(x: simcastle_core::types::Millis) -> String {
     }
 }
 
-fn print_state(game: &simcastle_core::Game) {
-    println!("Turn: {}, Food: {}/{} ({})", game.state().turn, game.state().food, game.state().castle().food_infrastructure.food_storage, format_delta(game.state().food_delta()));
+fn print_state(game: &simcastle_core::gamestate::GameState) {
+    println!("Turn: {}, Food: {}/{} ({})", game.turn, game.food, game.castle().food_infrastructure.food_storage, format_delta(game.food_delta()));
 }
 
-fn print_food(game: &simcastle_core::Game) {
-    let econ = game.state().food_economy();
+fn print_food(game: &simcastle_core::gamestate::GameState) {
+    let econ = game.food_economy();
     println!("  Produced: {:.2} = (base:{:.2} + skills:{:.2}) * teamwork:{:.2}",
              econ.produced_per_turn,
              econ.base_production, econ.skills_boost, econ.cotenure_boost);

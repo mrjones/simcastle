@@ -8,13 +8,16 @@ pub struct FoodEconomy {
     pub produced_per_turn: types::Millis,
     pub consumed_per_turn: types::Millis,
 
+    pub num_farmers: f32,
+    pub acres_of_farmland: f32,
     pub base_production: f32,
     pub skills_boost: f32,
     pub cotenure_boost: f32,
 }
 
-pub fn food(farmers: &team::Team, _food_infrastructure: &castle::FoodInfrastructure, population: &population::Population) -> FoodEconomy {
-    let base_production: f32 = farmers.members().len() as f32;
+pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructure, population: &population::Population) -> FoodEconomy {
+    let base_production: f32 =
+        std::cmp::min(food_infrastructure.acres_of_farmland, farmers.members().len() as i32) as f32;
     let mut production: f32 = base_production;
 
     let mut skill_stdevs: f32 = 0.0;
@@ -51,6 +54,8 @@ pub fn food(farmers: &team::Team, _food_infrastructure: &castle::FoodInfrastruct
         consumed_per_turn: types::Millis::from_i32(
             population.characters().len() as i32),
 
+        num_farmers: farmers.members().len() as f32,
+        acres_of_farmland: food_infrastructure.acres_of_farmland as f32,
         base_production: base_production,
         skills_boost: skills_boost,
         cotenure_boost: cotenure_boost,
