@@ -88,6 +88,10 @@ impl Character {
         return self.traits.get(&t).expect("unexpected character trait").clone();
     }
 
+    pub fn set_trait(&mut self, t: Trait, v: i32) {
+        self.traits.insert(t, v).expect("updated missing trait");
+    }
+
     pub fn full_debug_string(&self) -> String {
         let trait_infos = all_trait_infos();
         let traits_str = all_traits().iter().map(|t| format!("{}:{}", trait_infos.get(t).unwrap().string3, self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");

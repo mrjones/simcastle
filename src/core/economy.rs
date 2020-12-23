@@ -23,13 +23,17 @@ trait Model<InT, OutT> {
 }
 
 struct LinearTraitsModel {
-    _weights: std::collections::HashMap<character::Trait, f32>,
+    weights: std::collections::HashMap<character::Trait, f32>,
 }
 
 // TODO: & -> std::borrow::Borrow?
 impl Model<character::Character, f32> for LinearTraitsModel {
-    fn apply(&self, _character: &character::Character) -> f32 {
-        return 1.0; // XXX TODO
+    fn apply(&self, character: &character::Character) -> f32 {
+        let mut boost_accum = 0.0;
+        for (t, weight) in &self.weights {
+            boost_accum += weight * (character.get_trait(*t) as f32 - 50.0) / 10.0;
+        }
+        return 1.0 + boost_accum;
     }
 }
 
@@ -85,12 +89,19 @@ mod test {
     fn simple_model() {
         use super::Model;
 
-        let pop = super::population::Population::new(vec![]);
+        let mut ch = super::character::Character::new_random(
+            super::character::CharacterId(1));
+        ch.set_trait(super::character::Trait::Strength, 60);
+
+        let pop = super::population::Population::new(vec![ch]);
 
         let m = super::SimpleCombiner{
             m1: &super::CharacterExtractorModel{population: &pop},
             m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
-                mapper: &super::LinearTraitsModel{_weights: maplit::hashmap!{}},
+                mapper: &super::LinearTraitsModel{weights: maplit::hashmap!{
+                    // 0.1 boost per 10 points (1 stdev) of strgenth
+                    super::character::Trait::Strength => 0.1,
+                }},
                 reducer: &super::MultiplierReducer{},
             },
         };
@@ -98,7 +109,7 @@ mod test {
         let team = super::team::Team::new();
 
         let boost = m.apply(&team);
-        assert_eq!(1.0, boost);
+        assert_eq!(1.1, boost);
     }
 }
 
