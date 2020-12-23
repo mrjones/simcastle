@@ -23,30 +23,13 @@ trait Model<InT, OutT> {
 }
 
 struct LinearTraitsModel {
-    linear_weights: std::collections::HashMap<character::Trait, f32>,
-}
-
-impl LinearTraitsModel {
-    fn new(linear_weights: std::collections::HashMap<character::Trait, f32>) -> LinearTraitsModel {
-        return LinearTraitsModel{linear_weights: linear_weights};
-    }
+    _weights: std::collections::HashMap<character::Trait, f32>,
 }
 
 // TODO: & -> std::borrow::Borrow?
 impl Model<character::Character, f32> for LinearTraitsModel {
-    fn apply(&self, character: &character::Character) -> f32 {
+    fn apply(&self, _character: &character::Character) -> f32 {
         return 1.0; // XXX TODO
-    }
-}
-
-struct TeamMapperModel<'a> {
-    population: &'a population::Population,
-//    member_model: Model<&character::Character, f32>,
-}
-
-impl <'a> Model<team::Team, Vec<f32>> for TeamMapperModel<'a> {
-    fn apply(&self, team: &team::Team) -> Vec<f32> {
-        return team.members().iter().map(|cid| { return 1.0; /* xxx */ }).collect();
     }
 }
 
@@ -54,7 +37,7 @@ struct CharacterExtractorModel<'a> {
     population: &'a population::Population,
 }
 
-// XXX: &character again
+// XXX: &character again, to avoid copy
 impl <'a> Model<team::Team, Vec<character::Character>> for CharacterExtractorModel<'a> {
     fn apply(&self, team: &team::Team) -> Vec<character::Character> {
         return team.members().iter().map(|cid| -> character::Character {
@@ -65,8 +48,8 @@ impl <'a> Model<team::Team, Vec<character::Character>> for CharacterExtractorMod
 }
 
 struct SimpleCombiner<'a, InT, MidT, OutT> {
-    m1: &'a Model<InT, MidT>,
-    m2: &'a Model<MidT, OutT>,
+    m1: &'a dyn Model<InT, MidT>,
+    m2: &'a dyn Model<MidT, OutT>,
 }
 
 impl <'a, InT, MidT, OutT> Model<InT, OutT> for SimpleCombiner<'a, InT, MidT, OutT> {
@@ -85,8 +68,8 @@ impl Model<Vec<f32>, f32> for MultiplierReducer {
 }
 
 struct MapReduceCombiner<'a, InT, MidT, OutT> {
-    mapper: &'a Model<InT, MidT>, // XXX remove ref
-    reducer: &'a Model<Vec<MidT>, OutT>
+    mapper: &'a dyn Model<InT, MidT>, // XXX remove ref
+    reducer: &'a dyn Model<Vec<MidT>, OutT>
 }
 
 impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT, MidT, OutT> {
@@ -107,7 +90,7 @@ mod test {
         let m = super::SimpleCombiner{
             m1: &super::CharacterExtractorModel{population: &pop},
             m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
-                mapper: &super::LinearTraitsModel::new(maplit::hashmap!{}),
+                mapper: &super::LinearTraitsModel{_weights: maplit::hashmap!{}},
                 reducer: &super::MultiplierReducer{},
             },
         };
