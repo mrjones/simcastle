@@ -4,6 +4,122 @@ use super::population;
 use super::team;
 use super::types;
 
+// Food production model nodes
+// - Per-attribute weights ... linear(?)
+// - Team co-tenure
+// - Leadership
+// - Per-character experience/expertise
+
+// TODO: What's the type of "Boost"?
+// ApplyBoost(Value, Boost)  => Value
+//   Multiply([Boost]) => Boost
+//     CotenureModel(Team) => Boost
+//     Sum([Boost]) => Boost
+//       LinearAttributesModel(Team, Weights) => [Boost]
+//   BaseProduction(Team, Infrastructure) => Value
+
+trait Model<InT, OutT> {
+    fn apply(&self, input: &InT) -> OutT;
+}
+
+struct LinearTraitsModel {
+    linear_weights: std::collections::HashMap<character::Trait, f32>,
+}
+
+impl LinearTraitsModel {
+    fn new(linear_weights: std::collections::HashMap<character::Trait, f32>) -> LinearTraitsModel {
+        return LinearTraitsModel{linear_weights: linear_weights};
+    }
+}
+
+// TODO: & -> std::borrow::Borrow?
+impl Model<character::Character, f32> for LinearTraitsModel {
+    fn apply(&self, character: &character::Character) -> f32 {
+        return 1.0; // XXX TODO
+    }
+}
+
+struct TeamMapperModel<'a> {
+    population: &'a population::Population,
+//    member_model: Model<&character::Character, f32>,
+}
+
+impl <'a> Model<team::Team, Vec<f32>> for TeamMapperModel<'a> {
+    fn apply(&self, team: &team::Team) -> Vec<f32> {
+        return team.members().iter().map(|cid| { return 1.0; /* xxx */ }).collect();
+    }
+}
+
+struct CharacterExtractorModel<'a> {
+    population: &'a population::Population,
+}
+
+// XXX: &character again
+impl <'a> Model<team::Team, Vec<character::Character>> for CharacterExtractorModel<'a> {
+    fn apply(&self, team: &team::Team) -> Vec<character::Character> {
+        return team.members().iter().map(|cid| -> character::Character {
+            let c:  &character::Character = self.population.character_with_id(*cid).unwrap();
+            return (*c).clone();
+        }).collect(); // XXX unwrap
+    }
+}
+
+struct SimpleCombiner<'a, InT, MidT, OutT> {
+    m1: &'a Model<InT, MidT>,
+    m2: &'a Model<MidT, OutT>,
+}
+
+impl <'a, InT, MidT, OutT> Model<InT, OutT> for SimpleCombiner<'a, InT, MidT, OutT> {
+    fn apply(&self, input: &InT) -> OutT {
+        let mid: MidT = self.m1.apply(input);
+        return self.m2.apply(&mid);
+    }
+}
+
+struct MultiplierReducer { }
+
+impl Model<Vec<f32>, f32> for MultiplierReducer {
+    fn apply(&self, input: &Vec<f32>) -> f32 {
+        return input.iter().fold(1.0, |acc, i| acc * i);
+    }
+}
+
+struct MapReduceCombiner<'a, InT, MidT, OutT> {
+    mapper: &'a Model<InT, MidT>, // XXX remove ref
+    reducer: &'a Model<Vec<MidT>, OutT>
+}
+
+impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT, MidT, OutT> {
+    fn apply(&self, input: &Vec<InT>) -> OutT {
+        let mid_v: Vec<MidT> = input.iter().map(|i: &InT| self.mapper.apply(i)).collect();
+        return self.reducer.apply(&mid_v);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn simple_model() {
+        use super::Model;
+
+        let pop = super::population::Population::new(vec![]);
+
+        let m = super::SimpleCombiner{
+            m1: &super::CharacterExtractorModel{population: &pop},
+            m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
+                mapper: &super::LinearTraitsModel::new(maplit::hashmap!{}),
+                reducer: &super::MultiplierReducer{},
+            },
+        };
+
+        let team = super::team::Team::new();
+
+        let boost = m.apply(&team);
+        assert_eq!(1.0, boost);
+    }
+}
+
+
 struct SkillModel {
     linear_weights: std::collections::HashMap<character::Trait, f32>,
 }

@@ -60,6 +60,7 @@ impl CharacterFactory {
     }
 }
 
+#[derive(Clone)]
 pub struct Character {
     id: CharacterId,
     name: String,
