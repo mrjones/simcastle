@@ -130,7 +130,8 @@ mod test {
 
         let mut ch = super::character::Character::new_random(
             super::character::CharacterId(1));
-        ch.set_trait(super::character::Trait::Strength, 60);
+        ch.set_trait(super::character::Trait::WorkEthic, 60);
+        ch.set_trait(super::character::Trait::Intelligence, 60);
         let team = super::team::Team::new_with_ids(maplit::hashset!{ch.id()});
 
         let pop = super::population::Population::new(vec![ch]);
@@ -140,7 +141,8 @@ mod test {
             m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
                 mapper: &super::LinearTraitsModel{weights: maplit::hashmap!{
                     // 0.1 boost per 10 points (1 stdev) of strgenth
-                    super::character::Trait::Strength => 0.1,
+                    super::character::Trait::Intelligence => 0.05,
+                    super::character::Trait::WorkEthic => 0.1,
                 }},
                 reducer: &super::MultiplierReducer{},
             },
