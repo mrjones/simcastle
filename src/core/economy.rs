@@ -91,7 +91,7 @@ impl <'a, InT, MidT, OutT> Model<InT, OutT> for Sequencer<'a, InT, MidT, OutT> {
 
         return Explanation{
             v: fin.v,
-            text: format!("Sequencer[{} -> {}]", mid.text, fin.text),
+            text: format!("{} -> {}", mid.text, fin.text),
         };
     }
 }
@@ -114,7 +114,7 @@ struct SumReducer { }
 impl Model<Vec<f32>, f32> for SumReducer {
     fn explain(&self, input: &Vec<f32>) -> Explanation<f32> {
         let v = input.iter().fold(0.0, |acc, i| acc + i);
-        let t = format!("SumReducer = {}", v);
+        let t = format!("Sum = {}", v);
         return Explanation{
             v: v,
             text: t,
@@ -138,7 +138,7 @@ impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT,
 
         return Explanation{
             v: fin.v,
-            text: format!("MapReduceCombiner[map=[{}], red=[{}]]", mid_es.join(","), fin.text),
+            text: format!("MapReduceCombiner[map=[\n\t{}\n], red=[{}]]", mid_es.join("\n\t"), fin.text),
         };
     }
 }
@@ -156,7 +156,7 @@ impl <'a, T1, T2> Model<(&T1, &T2), f32> for SimpleMultiplier<'a, T1, T2> {
 
         return Explanation{
             v: e1.v * e2.v,
-            text: format!("{} ({}) * {} ({}) = {}", e1.v, e1.text, e2.v, e2.text, (e1.v * e2.v)),
+            text: format!("  {} ({})\n* {} ({})\n= {}", e1.v, e1.text, e2.v, e2.text, (e1.v * e2.v)),
         };
     }
 }

@@ -152,7 +152,7 @@ fn print_state(game: &simcastle_core::gamestate::GameState) {
 
 fn print_food(game: &simcastle_core::gamestate::GameState) {
     let econ = game.food_economy();
-    println!("  Produced: {:.2} = {}",
+    println!("  Produced: {:.2}\n{}",
              econ.produced_per_turn.v, econ.produced_per_turn.text);
     println!("- Consumed: {:.2}", econ.consumed_per_turn);
     println!("=================");
