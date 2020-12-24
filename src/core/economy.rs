@@ -18,9 +18,24 @@ use super::types;
 //       LinearAttributesModel(Team, Weights) => [Boost]
 //   BaseProduction(Team, Infrastructure) => Value
 
+struct Explanation<T> {
+    v: T,
+    text: String,
+}
+
 trait Model<InT, OutT> {
     fn apply(&self, input: &InT) -> OutT;
+    fn explain(&self, input: &InT) -> Explanation<OutT>;
 }
+
+/*
+fn noop_explain<InT, OutT>(child: Explanation<T>, apply_fn: impl Fn(InT) -> OutT) -> Explanation<OutT> {
+    return Explanation{
+        v: apply_fn(input.v),
+        text: format!("noop[{}]", input.text),
+    };
+}
+*/
 
 struct LinearTraitsModel {
     weights: std::collections::HashMap<character::Trait, f32>,
@@ -34,6 +49,13 @@ impl Model<character::Character, f32> for LinearTraitsModel {
             boost_accum += weight * (character.get_trait(*t) as f32 - 50.0) / 10.0;
         }
         return 1.0 + boost_accum;
+    }
+
+    fn explain(&self, input: &character::Character) -> Explanation<f32> {
+        return Explanation{
+            v: self.apply(input),
+            text: format!("LinearTraits[]"),
+        };
     }
 }
 
@@ -49,6 +71,13 @@ impl <'a> Model<team::Team, Vec<character::Character>> for CharacterExtractorMod
             return (*c).clone();
         }).collect(); // XXX unwrap
     }
+
+    fn explain(&self, input: &team::Team) -> Explanation<Vec<character::Character>> {
+        return Explanation{
+            v: self.apply(input),
+            text: format!("CharacterExtractor"),
+        };
+    }
 }
 
 struct SimpleCombiner<'a, InT, MidT, OutT> {
@@ -61,6 +90,15 @@ impl <'a, InT, MidT, OutT> Model<InT, OutT> for SimpleCombiner<'a, InT, MidT, Ou
         let mid: MidT = self.m1.apply(input);
         return self.m2.apply(&mid);
     }
+    fn explain(&self, input: &InT) -> Explanation<OutT> {
+        let mid: Explanation<MidT> = self.m1.explain(input);
+        let fin = self.m2.explain(&mid.v);
+
+        return Explanation{
+            v: fin.v,
+            text: format!("SimpleCombiner[{} -> {}]", mid.text, fin.text),
+        };
+    }
 }
 
 struct MultiplierReducer { }
@@ -68,6 +106,12 @@ struct MultiplierReducer { }
 impl Model<Vec<f32>, f32> for MultiplierReducer {
     fn apply(&self, input: &Vec<f32>) -> f32 {
         return input.iter().fold(1.0, |acc, i| acc * i);
+    }
+    fn explain(&self, input: &Vec<f32>) -> Explanation<f32> {
+        return Explanation{
+            v: self.apply(input),
+            text: format!("MultiplierReducer"),
+        };
     }
 }
 
@@ -81,6 +125,19 @@ impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT,
         let mid_v: Vec<MidT> = input.iter().map(|i: &InT| self.mapper.apply(i)).collect();
         return self.reducer.apply(&mid_v);
     }
+    fn explain(&self, input: &Vec<InT>) -> Explanation<OutT> {
+        let mid: Vec<Explanation<MidT>> = input.iter().map(|i: &InT| self.mapper.explain(i)).collect();
+        let mid_es: Vec<String> = mid.iter().map(|e| e.text.clone()).collect();
+        let mid_vs: Vec<MidT> = mid.into_iter().map(|e| e.v).collect();
+
+
+        let fin: Explanation<OutT> = self.reducer.explain(&mid_vs);
+
+        return Explanation{
+            v: fin.v,
+            text: format!("MapReduceCombiner[cardinality={}, map={}, red={}]", input.len(), mid_es.join(","), fin.text),
+        };
+    }
 }
 
 #[cfg(test)]
@@ -92,6 +149,7 @@ mod test {
         let mut ch = super::character::Character::new_random(
             super::character::CharacterId(1));
         ch.set_trait(super::character::Trait::Strength, 60);
+        let team = super::team::Team::new_with_ids(maplit::hashset!{ch.id()});
 
         let pop = super::population::Population::new(vec![ch]);
 
@@ -106,10 +164,10 @@ mod test {
             },
         };
 
-        let team = super::team::Team::new();
 
-        let boost = m.apply(&team);
-        assert_eq!(1.1, boost);
+        //        let boost = m.apply(&team);
+        let boost_explanation = m.explain(&team);
+        assert_eq!(1.2, boost_explanation.v, "{}", boost_explanation.text);
     }
 }
 
