@@ -72,8 +72,8 @@ impl <'a> Model<team::Team, Vec<character::Character>> for CharacterExtractorMod
 }
 
 struct Sequencer<'a, InT, MidT, OutT> {
-    m1: &'a dyn Model<InT, MidT>,
-    m2: &'a dyn Model<MidT, OutT>,
+    m1: Box<dyn Model<InT, MidT> + 'a>,
+    m2: Box<dyn Model<MidT, OutT> + 'a>,
 }
 
 impl <'a, InT, MidT, OutT> Model<InT, OutT> for Sequencer<'a, InT, MidT, OutT> {
@@ -102,8 +102,8 @@ impl Model<Vec<f32>, f32> for MultiplierReducer {
 }
 
 struct MapReduceCombiner<'a, InT, MidT, OutT> {
-    mapper: &'a dyn Model<InT, MidT>, // XXX remove ref
-    reducer: &'a dyn Model<Vec<MidT>, OutT>
+    mapper: Box<dyn Model<InT, MidT> + 'a>, // XXX remove ref
+    reducer: Box<dyn Model<Vec<MidT>, OutT> + 'a>
 }
 
 impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT, MidT, OutT> {
@@ -123,8 +123,8 @@ impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT,
 }
 
 struct SimpleMultiplier<'a, T1, T2> {
-    m1: &'a dyn Model<T1, f32>,
-    m2: &'a dyn Model<T2, f32>,
+    m1: Box<dyn Model<T1, f32> + 'a>,
+    m2: Box<dyn Model<T2, f32> + 'a>,
 }
 
 impl <'a, T1, T2> Model<(&T1, &T2), f32> for SimpleMultiplier<'a, T1, T2> {
@@ -180,6 +180,27 @@ impl <'a> Model<team::Team, f32> for ExplainableCotenureModel<'a> {
     }
 }
 
+fn standard_model(pop: &population::Population) -> impl Model<(&team::Team, &team::Team), f32> + '_{
+    return SimpleMultiplier{
+        m1: Box::new(Sequencer{
+            m1: Box::new(CharacterExtractorModel{population: &pop}),
+            m2: Box::new(MapReduceCombiner::<character::Character, f32, f32>{
+                mapper: Box::new(LinearTraitsModel{weights: maplit::hashmap!{
+                    // 0.1 boost per 10 points (1 stdev) of strgenth
+                    character::Trait::Intelligence => 0.05,
+                    character::Trait::WorkEthic => 0.1,
+                }}),
+                reducer: Box::new(MultiplierReducer{}),
+            }),
+        }),
+        m2: Box::new(ExplainableCotenureModel{
+            rapport_tracker: pop.rapport_tracker(),
+            log_base: 100.0,
+            multiplier: 1.0 / 3.0,
+        }),
+    };
+}
+
 #[cfg(test)]
 mod test {
     #[test]
@@ -194,27 +215,7 @@ mod test {
 
         let pop = super::population::Population::new(vec![ch]);
 
-        let tenure = super::ExplainableCotenureModel{
-            rapport_tracker: pop.rapport_tracker(),
-            log_base: 100.0,
-            multiplier: 1.0 / 3.0,
-        };
-
-        let m =
-            super::SimpleMultiplier{
-                m1: &super::Sequencer{
-                    m1: &super::CharacterExtractorModel{population: &pop},
-                    m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
-                        mapper: &super::LinearTraitsModel{weights: maplit::hashmap!{
-                            // 0.1 boost per 10 points (1 stdev) of strgenth
-                            super::character::Trait::Intelligence => 0.05,
-                            super::character::Trait::WorkEthic => 0.1,
-                        }},
-                        reducer: &super::MultiplierReducer{},
-                    },
-                },
-                m2: &tenure,
-            };
+        let m = super::standard_model(&pop);
 
         let boost_explanation = m.explain(&(&team, &team));
 
