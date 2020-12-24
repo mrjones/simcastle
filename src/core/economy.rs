@@ -23,7 +23,7 @@ struct Explanation<T> {
     text: String,
 }
 
-trait Model<InT, OutT> {
+trait ExplainableComputation<InT, OutT> {
     fn explain(&self, input: &InT) -> Explanation<OutT>;
 }
 
@@ -32,16 +32,20 @@ struct LinearTraitsModel {
 }
 
 // TODO: & -> std::borrow::Borrow?
-impl Model<character::Character, f32> for LinearTraitsModel {
+impl ExplainableComputation<character::Character, f32> for LinearTraitsModel {
     fn explain(&self, character: &character::Character) -> Explanation<f32> {
         let mut boost_accum = 1.0;
+
+        let mut boost_texts = vec![];
         for (t, weight) in &self.weights {
-            boost_accum += weight * (character.get_trait(*t) as f32 - 50.0) / 10.0;
+            let delta = weight * (character.get_trait(*t) as f32 - 50.0) / 10.0;
+            boost_accum += delta;
+            boost_texts.push(format!("{:?}:{}", t, delta));
         }
 
         return Explanation{
             v: boost_accum,
-            text: format!("LinearTraits[]"),
+            text: format!("{} [{}] {}", character.name(), boost_texts.join(" + "), boost_accum),
         };
     }
 }
@@ -51,60 +55,58 @@ struct CharacterExtractorModel<'a> {
 }
 
 // XXX: &character again, to avoid copy
-impl <'a> Model<team::Team, Vec<character::Character>> for CharacterExtractorModel<'a> {
+impl <'a> ExplainableComputation<team::Team, Vec<character::Character>> for CharacterExtractorModel<'a> {
     fn explain(&self, team: &team::Team) -> Explanation<Vec<character::Character>> {
-        let v = team.members().iter().map(|cid| -> character::Character {
+        let v: Vec<character::Character> = team.members().iter().map(|cid| -> character::Character {
             let c:  &character::Character = self.population.character_with_id(*cid).unwrap();
             return (*c).clone();
         }).collect(); // XXX unwrap
 
+        let count = v.len();
+
         return Explanation{
             v: v,
-            text: format!("CharacterExtractor"),
+            text: format!("{} team member(s)", count),
         };
     }
 }
 
-struct SimpleCombiner<'a, InT, MidT, OutT> {
-    m1: &'a dyn Model<InT, MidT>,
-    m2: &'a dyn Model<MidT, OutT>,
+struct Sequencer<'a, InT, MidT, OutT> {
+    m1: &'a dyn ExplainableComputation<InT, MidT>,
+    m2: &'a dyn ExplainableComputation<MidT, OutT>,
 }
 
-impl <'a, InT, MidT, OutT> Model<InT, OutT> for SimpleCombiner<'a, InT, MidT, OutT> {
+impl <'a, InT, MidT, OutT> ExplainableComputation<InT, OutT> for Sequencer<'a, InT, MidT, OutT> {
     fn explain(&self, input: &InT) -> Explanation<OutT> {
         let mid: Explanation<MidT> = self.m1.explain(input);
         let fin = self.m2.explain(&mid.v);
 
         return Explanation{
             v: fin.v,
-            text: format!("SimpleCombiner[{} -> {}]", mid.text, fin.text),
+            text: format!("Sequencer[{} -> {}]", mid.text, fin.text),
         };
     }
 }
 
 struct MultiplierReducer { }
 
-impl Model<Vec<f32>, f32> for MultiplierReducer {
+impl ExplainableComputation<Vec<f32>, f32> for MultiplierReducer {
     fn explain(&self, input: &Vec<f32>) -> Explanation<f32> {
+        let v = input.iter().fold(1.0, |acc, i| acc * i);
+        let t = format!("MultiplierReducer = {}", v);
         return Explanation{
-            v:  input.iter().fold(1.0, |acc, i| acc * i),
-            text: format!("MultiplierReducer"),
+            v: v,
+            text: t,
         };
     }
 }
 
 struct MapReduceCombiner<'a, InT, MidT, OutT> {
-    mapper: &'a dyn Model<InT, MidT>, // XXX remove ref
-    reducer: &'a dyn Model<Vec<MidT>, OutT>
+    mapper: &'a dyn ExplainableComputation<InT, MidT>, // XXX remove ref
+    reducer: &'a dyn ExplainableComputation<Vec<MidT>, OutT>
 }
 
-impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT, MidT, OutT> {
-    /*
-    fn apply(&self, input: &Vec<InT>) -> OutT {
-        let mid_v: Vec<MidT> = input.iter().map(|i: &InT| self.mapper.apply(i)).collect();
-        return self.reducer.apply(&mid_v);
-    }
-*/
+impl <'a, InT, MidT, OutT> ExplainableComputation<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT, MidT, OutT> {
     fn explain(&self, input: &Vec<InT>) -> Explanation<OutT> {
         let mid: Vec<Explanation<MidT>> = input.iter().map(|i: &InT| self.mapper.explain(i)).collect();
         let mid_es: Vec<String> = mid.iter().map(|e| e.text.clone()).collect();
@@ -115,7 +117,7 @@ impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT,
 
         return Explanation{
             v: fin.v,
-            text: format!("MapReduceCombiner[cardinality={}, map={}, red={}]", input.len(), mid_es.join(","), fin.text),
+            text: format!("MapReduceCombiner[map=[{}], red=[{}]]", mid_es.join(","), fin.text),
         };
     }
 }
@@ -124,7 +126,7 @@ impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT,
 mod test {
     #[test]
     fn simple_model() {
-        use super::Model;
+        use super::ExplainableComputation;
 
         let mut ch = super::character::Character::new_random(
             super::character::CharacterId(1));
@@ -133,7 +135,7 @@ mod test {
 
         let pop = super::population::Population::new(vec![ch]);
 
-        let m = super::SimpleCombiner{
+        let m = super::Sequencer{
             m1: &super::CharacterExtractorModel{population: &pop},
             m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
                 mapper: &super::LinearTraitsModel{weights: maplit::hashmap!{
@@ -144,8 +146,6 @@ mod test {
             },
         };
 
-
-        //        let boost = m.apply(&team);
         let boost_explanation = m.explain(&team);
         assert_eq!(1.2, boost_explanation.v, "{}", boost_explanation.text);
     }
