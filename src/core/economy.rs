@@ -24,18 +24,8 @@ struct Explanation<T> {
 }
 
 trait Model<InT, OutT> {
-    fn apply(&self, input: &InT) -> OutT;
     fn explain(&self, input: &InT) -> Explanation<OutT>;
 }
-
-/*
-fn noop_explain<InT, OutT>(child: Explanation<T>, apply_fn: impl Fn(InT) -> OutT) -> Explanation<OutT> {
-    return Explanation{
-        v: apply_fn(input.v),
-        text: format!("noop[{}]", input.text),
-    };
-}
-*/
 
 struct LinearTraitsModel {
     weights: std::collections::HashMap<character::Trait, f32>,
@@ -43,17 +33,14 @@ struct LinearTraitsModel {
 
 // TODO: & -> std::borrow::Borrow?
 impl Model<character::Character, f32> for LinearTraitsModel {
-    fn apply(&self, character: &character::Character) -> f32 {
-        let mut boost_accum = 0.0;
+    fn explain(&self, character: &character::Character) -> Explanation<f32> {
+        let mut boost_accum = 1.0;
         for (t, weight) in &self.weights {
             boost_accum += weight * (character.get_trait(*t) as f32 - 50.0) / 10.0;
         }
-        return 1.0 + boost_accum;
-    }
 
-    fn explain(&self, input: &character::Character) -> Explanation<f32> {
         return Explanation{
-            v: self.apply(input),
+            v: boost_accum,
             text: format!("LinearTraits[]"),
         };
     }
@@ -65,16 +52,14 @@ struct CharacterExtractorModel<'a> {
 
 // XXX: &character again, to avoid copy
 impl <'a> Model<team::Team, Vec<character::Character>> for CharacterExtractorModel<'a> {
-    fn apply(&self, team: &team::Team) -> Vec<character::Character> {
-        return team.members().iter().map(|cid| -> character::Character {
+    fn explain(&self, team: &team::Team) -> Explanation<Vec<character::Character>> {
+        let v = team.members().iter().map(|cid| -> character::Character {
             let c:  &character::Character = self.population.character_with_id(*cid).unwrap();
             return (*c).clone();
         }).collect(); // XXX unwrap
-    }
 
-    fn explain(&self, input: &team::Team) -> Explanation<Vec<character::Character>> {
         return Explanation{
-            v: self.apply(input),
+            v: v,
             text: format!("CharacterExtractor"),
         };
     }
@@ -86,10 +71,6 @@ struct SimpleCombiner<'a, InT, MidT, OutT> {
 }
 
 impl <'a, InT, MidT, OutT> Model<InT, OutT> for SimpleCombiner<'a, InT, MidT, OutT> {
-    fn apply(&self, input: &InT) -> OutT {
-        let mid: MidT = self.m1.apply(input);
-        return self.m2.apply(&mid);
-    }
     fn explain(&self, input: &InT) -> Explanation<OutT> {
         let mid: Explanation<MidT> = self.m1.explain(input);
         let fin = self.m2.explain(&mid.v);
@@ -104,12 +85,9 @@ impl <'a, InT, MidT, OutT> Model<InT, OutT> for SimpleCombiner<'a, InT, MidT, Ou
 struct MultiplierReducer { }
 
 impl Model<Vec<f32>, f32> for MultiplierReducer {
-    fn apply(&self, input: &Vec<f32>) -> f32 {
-        return input.iter().fold(1.0, |acc, i| acc * i);
-    }
     fn explain(&self, input: &Vec<f32>) -> Explanation<f32> {
         return Explanation{
-            v: self.apply(input),
+            v:  input.iter().fold(1.0, |acc, i| acc * i),
             text: format!("MultiplierReducer"),
         };
     }
@@ -121,10 +99,12 @@ struct MapReduceCombiner<'a, InT, MidT, OutT> {
 }
 
 impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT, MidT, OutT> {
+    /*
     fn apply(&self, input: &Vec<InT>) -> OutT {
         let mid_v: Vec<MidT> = input.iter().map(|i: &InT| self.mapper.apply(i)).collect();
         return self.reducer.apply(&mid_v);
     }
+*/
     fn explain(&self, input: &Vec<InT>) -> Explanation<OutT> {
         let mid: Vec<Explanation<MidT>> = input.iter().map(|i: &InT| self.mapper.explain(i)).collect();
         let mid_es: Vec<String> = mid.iter().map(|e| e.text.clone()).collect();
