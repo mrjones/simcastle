@@ -122,6 +122,64 @@ impl <'a, InT, MidT, OutT> Model<Vec<InT>, OutT>  for MapReduceCombiner<'a, InT,
     }
 }
 
+struct SimpleMultiplier<'a, T1, T2> {
+    m1: &'a dyn Model<T1, f32>,
+    m2: &'a dyn Model<T2, f32>,
+}
+
+impl <'a, T1, T2> Model<(&T1, &T2), f32> for SimpleMultiplier<'a, T1, T2> {
+    fn explain(&self, input: &(&T1, &T2)) -> Explanation<f32> {
+        let (i1, i2) = input;
+        let e1 = self.m1.explain(i1);
+        let e2 = self.m2.explain(i2);
+
+        return Explanation{
+            v: e1.v * e2.v,
+            text: format!("{} ({}) * {} ({}) = {}", e1.v, e1.text, e2.v, e2.text, (e1.v * e2.v)),
+        };
+    }
+}
+
+
+struct ExplainableCotenureModel<'a> {
+    rapport_tracker: &'a population::RapportTracker,
+    log_base: f32,
+    multiplier: f32,
+}
+
+impl <'a> Model<team::Team, f32> for ExplainableCotenureModel<'a> {
+    fn explain(&self, team: &team::Team) -> Explanation<f32> {
+        if team.members().len() < 2 {
+            return Explanation{
+                v: 1.0,
+                text: "Single-person team".to_string(),
+            };
+        }
+
+        let mut total_cotenure: i32 = 0;
+        let mut num_pairs: i32 = 0;
+        for (c1, c2) in team.member_pairs() {
+            total_cotenure += self.rapport_tracker.turns_on_same_team(&c1, &c2);
+            num_pairs += 1;
+        }
+
+        if total_cotenure == 0 {
+            return Explanation{
+                v: 1.0,
+                text: "No past experience together".to_string(),
+            };
+        }
+
+        let average_cotenure: f32 = total_cotenure as f32 / num_pairs as f32;
+        let v = 1.0 + (average_cotenure.log(self.log_base) * self.multiplier);
+
+        return Explanation{
+            v: v,
+            text: format!("Avg. cotenure: {}", average_cotenure),
+        };
+    }
+}
+
 #[cfg(test)]
 mod test {
     #[test]
@@ -136,19 +194,30 @@ mod test {
 
         let pop = super::population::Population::new(vec![ch]);
 
-        let m = super::Sequencer{
-            m1: &super::CharacterExtractorModel{population: &pop},
-            m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
-                mapper: &super::LinearTraitsModel{weights: maplit::hashmap!{
-                    // 0.1 boost per 10 points (1 stdev) of strgenth
-                    super::character::Trait::Intelligence => 0.05,
-                    super::character::Trait::WorkEthic => 0.1,
-                }},
-                reducer: &super::MultiplierReducer{},
-            },
+        let tenure = super::ExplainableCotenureModel{
+            rapport_tracker: pop.rapport_tracker(),
+            log_base: 100.0,
+            multiplier: 1.0 / 3.0,
         };
 
-        let boost_explanation = m.explain(&team);
+        let m =
+            super::SimpleMultiplier{
+                m1: &super::Sequencer{
+                    m1: &super::CharacterExtractorModel{population: &pop},
+                    m2: &super::MapReduceCombiner::<super::character::Character, f32, f32>{
+                        mapper: &super::LinearTraitsModel{weights: maplit::hashmap!{
+                            // 0.1 boost per 10 points (1 stdev) of strgenth
+                            super::character::Trait::Intelligence => 0.05,
+                            super::character::Trait::WorkEthic => 0.1,
+                        }},
+                        reducer: &super::MultiplierReducer{},
+                    },
+                },
+                m2: &tenure,
+            };
+
+        let boost_explanation = m.explain(&(&team, &team));
+
         assert_eq!(1.2, boost_explanation.v, "{}", boost_explanation.text);
     }
 }
