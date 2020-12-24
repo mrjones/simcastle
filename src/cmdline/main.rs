@@ -149,6 +149,16 @@ fn print_state(game: &simcastle_core::gamestate::GameState) {
     println!("Turn: {}, Food: {}/{} ({})", game.turn, game.food, game.castle().food_infrastructure.food_storage, format_delta(game.food_delta()));
 }
 
+
+fn print_food(game: &simcastle_core::gamestate::GameState) {
+    let econ = game.food_economy();
+    println!("  Produced: {:.2} = {}",
+             econ.produced_per_turn.v, econ.produced_per_turn.text);
+    println!("- Consumed: {:.2}", econ.consumed_per_turn);
+    println!("=================");
+    println!("= Net:      {:.2}", econ.produced_per_turn.v - econ.consumed_per_turn);
+}
+/*
 fn print_food(game: &simcastle_core::gamestate::GameState) {
     let econ = game.food_economy();
     println!("  Produced: {:.2} = (base:{:.2} + skills:{:.2}) * teamwork:{:.2}",
@@ -158,3 +168,4 @@ fn print_food(game: &simcastle_core::gamestate::GameState) {
     println!("=================");
     println!("= Net:      {:.2}", econ.produced_per_turn - econ.consumed_per_turn);
 }
+*/

@@ -18,9 +18,17 @@ use super::types;
 //       LinearAttributesModel(Team, Weights) => [Boost]
 //   BaseProduction(Team, Infrastructure) => Value
 
-struct Explanation<T> {
-    v: T,
-    text: String,
+
+fn to_millis(i: Explanation<f32>) -> Explanation<types::Millis> {
+    return Explanation{
+        v: types::Millis::from_f32(i.v),
+        text: i.text,
+    };
+}
+
+pub struct Explanation<T> {
+    pub v: T,
+    pub text: String,
 }
 
 trait Model<InT, OutT> {
@@ -34,18 +42,18 @@ struct LinearTraitsModel {
 // TODO: & -> std::borrow::Borrow?
 impl Model<character::Character, f32> for LinearTraitsModel {
     fn explain(&self, character: &character::Character) -> Explanation<f32> {
-        let mut boost_accum = 1.0;
+        let mut production = 1.0;
 
-        let mut boost_texts = vec![];
+        let mut texts = vec![];
         for (t, weight) in &self.weights {
             let delta = weight * (character.get_trait(*t) as f32 - 50.0) / 10.0;
-            boost_accum += delta;
-            boost_texts.push(format!("{:?}:{}", t, delta));
+            production += delta;
+            texts.push(format!("{:?}:{}", t, delta));
         }
 
         return Explanation{
-            v: boost_accum,
-            text: format!("{} [{}] {}", character.name(), boost_texts.join(" + "), boost_accum),
+            v: production,
+            text: format!("{} [{}] {}", character.name(), texts.join(" + "), production),
         };
     }
 }
@@ -94,6 +102,19 @@ impl Model<Vec<f32>, f32> for MultiplierReducer {
     fn explain(&self, input: &Vec<f32>) -> Explanation<f32> {
         let v = input.iter().fold(1.0, |acc, i| acc * i);
         let t = format!("MultiplierReducer = {}", v);
+        return Explanation{
+            v: v,
+            text: t,
+        };
+    }
+}
+
+struct SumReducer { }
+
+impl Model<Vec<f32>, f32> for SumReducer {
+    fn explain(&self, input: &Vec<f32>) -> Explanation<f32> {
+        let v = input.iter().fold(0.0, |acc, i| acc + i);
+        let t = format!("SumReducer = {}", v);
         return Explanation{
             v: v,
             text: t,
@@ -190,7 +211,7 @@ fn standard_model(pop: &population::Population) -> impl Model<(&team::Team, &tea
                     character::Trait::Intelligence => 0.05,
                     character::Trait::WorkEthic => 0.1,
                 }}),
-                reducer: Box::new(MultiplierReducer{}),
+                reducer: Box::new(SumReducer{}),
             }),
         }),
         m2: Box::new(ExplainableCotenureModel{
@@ -223,7 +244,7 @@ mod test {
     }
 }
 
-
+/*
 struct SkillModel {
     linear_weights: std::collections::HashMap<character::Trait, f32>,
 }
@@ -250,7 +271,9 @@ impl SkillModel {
         return skills_boost;
     }
 }
+*/
 
+/*
 struct CotenureModel {
     log_base: f32,
     multiplier: f32,
@@ -278,41 +301,44 @@ impl CotenureModel {
         return 1.0 + (average_cotenure.log(self.log_base) * self.multiplier);
     }
 }
+*/
 
 pub struct FoodEconomy {
-    pub produced_per_turn: types::Millis,
+    pub produced_per_turn: Explanation<types::Millis>,
     pub consumed_per_turn: types::Millis,
 
     pub num_farmers: f32,
     pub acres_of_farmland: f32,
     pub base_production: f32,
-    pub skills_boost: f32,
-    pub cotenure_boost: f32,
+//    pub skills_boost: f32,
+//    pub cotenure_boost: f32,
 }
 
 pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructure, population: &population::Population) -> FoodEconomy {
     // TODO(mrjones): Consider sublinear (rather than 0) growth once 'farmers > acres of farmland'
     let base_production: f32 =
         std::cmp::min(food_infrastructure.acres_of_farmland, farmers.members().len() as i32) as f32;
-    let mut production: f32 = base_production;
+//    let mut production: f32 = base_production;
 
-    let skill_model = SkillModel::new(maplit::hashmap!{
-        character::Trait::Intelligence => 0.05,
-        character::Trait::WorkEthic => 0.1,
-    });
-    let cotenure_model = CotenureModel{
-        log_base: 100.0,
-        multiplier: 1.0 / 3.0,
-    };
+//    let skill_model = SkillModel::new(maplit::hashmap!{
+//        character::Trait::Intelligence => 0.05,
+//        character::Trait::WorkEthic => 0.1,
+//    });
+//    let cotenure_model = CotenureModel{
+//        log_base: 100.0,
+//        multiplier: 1.0 / 3.0,
+//    };
 
-    let skills_boost = skill_model.team_skill_boost(farmers, population);
-    production = production + skills_boost;
+//    let skills_boost = skill_model.team_skill_boost(farmers, population);
+//    production = production + skills_boost;
 
-    let cotenure_boost = cotenure_model.boost(farmers, population.rapport_tracker());
-    production *= cotenure_boost;
+//    let cotenure_boost = cotenure_model.boost(farmers, population.rapport_tracker());
+//    production *= cotenure_boost;
+
 
     return FoodEconomy{
-        produced_per_turn: types::Millis::from_f32(production),
+        //        produced_per_turn: types::Millis::from_f32(production),
+        produced_per_turn: to_millis(standard_model(population).explain(&(farmers, farmers))),
         // 1.0 per person.. for now
         consumed_per_turn: types::Millis::from_i32(
             population.characters().len() as i32),
@@ -320,7 +346,8 @@ pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructu
         num_farmers: farmers.members().len() as f32,
         acres_of_farmland: food_infrastructure.acres_of_farmland as f32,
         base_production: base_production,
-        skills_boost: skills_boost,
-        cotenure_boost: cotenure_boost,
+//        skills_boost: skills_boost,
+//        cotenure_boost: cotenure_boost,
+//        boost:
     };
 }
