@@ -71,7 +71,7 @@ impl GameState {
 
     pub fn food_delta(&self) -> types::Millis {
         let food_economy = self.food_economy();
-        return food_economy.produced_per_turn.v - food_economy.consumed_per_turn;
+        return types::Millis::from_f32(food_economy.production.eval()) - food_economy.consumed_per_turn;
     }
 
     pub fn population(&self) -> &population::Population {
