@@ -50,18 +50,24 @@ fn stringify_op(op: &Op) -> String {
     }
 }
 
-fn stringify_exp(e: &Exp) -> String {
+// TODO(mrjones): indendentation in sub-ops
+fn stringify_exp(e: &Exp, indent: &str) -> String {
+    let new_indent = format!("{}  ", indent);
     match e {
         Exp::Constant{v} => format!("{}", v),
         Exp::BinaryExp{op, v1, v2} => format!(
-            "  {}\n{} {}\n==========\n= {}",
-            stringify_exp(v1),
+            "{}  {}\n{}{} {}\n{}==========\n{}= {}",
+            indent,
+            stringify_exp(v1, &new_indent),
+            indent,
             stringify_op(op),
-            stringify_exp(v2),
+            stringify_exp(v2, &new_indent),
+            indent,
+            indent,
             eval(e)),
         Exp::ArrayExp{op, vs} => {
-            let lines = vs.iter().map(|e| stringify_exp(e)).join(&format!("\n{} ", stringify_op(op)));
-            return format!("  {}\n========\n= {}", lines, eval(e));
+            let lines = vs.iter().map(|e| stringify_exp(e, &new_indent)).join(&format!("\n{}{} ", indent, stringify_op(op)));
+            return format!("  {}\n{}========\n{}= {}", lines, indent, indent, eval(e));
         },
     }
 }
@@ -97,7 +103,7 @@ mod exp_tests {
                 vs: vec![Exp::Constant{v: 1.1}, Exp::Constant{v: 1.2}, Exp::Constant{v:1.3}],
             }),
         };
-        assert!(false, "\n{}", super::stringify_exp(&e));
+        assert!(false, "\n{}", super::stringify_exp(&e, ""));
 
     }
 }
