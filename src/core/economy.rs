@@ -4,6 +4,8 @@ use super::population;
 use super::team;
 use super::types;
 
+use crate::itertools::Itertools;
+
 // Food production model nodes
 // - Per-attribute weights ... linear(?)
 // - Team co-tenure
@@ -19,6 +21,88 @@ use super::types;
 //   BaseProduction(Team, Infrastructure) => Value
 
 
+pub enum Op { SUM, MULTIPLY }
+
+pub enum Exp {
+    Constant{v: f32},
+    BinaryExp{op: Op, v1: Box<Exp>, v2: Box<Exp>},
+    ArrayExp{op: Op, vs: Vec<Exp>},
+}
+
+fn eval(e: &Exp) -> f32 {
+    match e {
+        Exp::Constant{v} => *v,
+        Exp::BinaryExp{op, v1, v2} => match op {
+            Op::SUM => eval(v1) + eval(v2),
+            Op::MULTIPLY => eval(v1) * eval(v2),
+        },
+        Exp::ArrayExp{op, vs} => match op {
+            Op::SUM => vs.iter().fold(0.0, |acc, x| acc + eval(x)),
+            Op::MULTIPLY => vs.iter().fold(1.0, |acc, x| acc * eval(x)),
+        },
+    }
+}
+
+fn stringify_op(op: &Op) -> String {
+    match op {
+        Op::SUM => "+".to_string(),
+        Op::MULTIPLY => "*".to_string(),
+    }
+}
+
+fn stringify_exp(e: &Exp) -> String {
+    match e {
+        Exp::Constant{v} => format!("{}", v),
+        Exp::BinaryExp{op, v1, v2} => format!(
+            "  {}\n{} {}\n==========\n= {}",
+            stringify_exp(v1),
+            stringify_op(op),
+            stringify_exp(v2),
+            eval(e)),
+        Exp::ArrayExp{op, vs} => {
+            let lines = vs.iter().map(|e| stringify_exp(e)).join(&format!("\n{} ", stringify_op(op)));
+            return format!("  {}\n========\n= {}", lines, eval(e));
+        },
+    }
+}
+
+fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>,
+                      team: &team::Team,
+                      population: &population::Population) -> Exp {
+    let mut character_exps = vec![];
+    for c in team.members().iter().map(|cid| population.character_with_id(*cid).unwrap()) {
+        let mut character_skills = vec![];
+        for (t, weight) in weights {
+            character_skills.push(Exp::Constant{v: weight * (c.get_trait(*t) as f32 - 50.0) / 10.0});
+        }
+        character_exps.push(Exp::ArrayExp{op: Op::SUM, vs: character_skills});
+    }
+
+    return Exp::ArrayExp{op: Op::SUM, vs: character_exps};
+}
+
+
+#[cfg(test)]
+mod exp_tests {
+    #[test]
+    fn simple_exp() {
+        use super::Exp;
+        use super::Op;
+
+        let e = Exp::BinaryExp{
+            op: Op::MULTIPLY,
+            v1: Box::new(Exp::Constant{v: 4.0}),
+            v2: Box::new(Exp::ArrayExp{
+                op: Op::SUM,
+                vs: vec![Exp::Constant{v: 1.1}, Exp::Constant{v: 1.2}, Exp::Constant{v:1.3}],
+            }),
+        };
+        assert!(false, "\n{}", super::stringify_exp(&e));
+
+    }
+}
+
+
 fn to_millis(i: Explanation<f32>) -> Explanation<types::Millis> {
     return Explanation{
         v: types::Millis::from_f32(i.v),
@@ -29,6 +113,7 @@ fn to_millis(i: Explanation<f32>) -> Explanation<types::Millis> {
 pub struct Explanation<T> {
     pub v: T,
     pub text: String,
+//    pub exp: Exp,
 }
 
 trait Model<InT, OutT> {
@@ -54,6 +139,7 @@ impl Model<character::Character, f32> for LinearTraitsModel {
         return Explanation{
             v: production,
             text: format!("{} [{}] {}", character.name(), texts.join(" + "), production),
+
         };
     }
 }
