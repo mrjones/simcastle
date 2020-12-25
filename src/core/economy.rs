@@ -23,18 +23,23 @@ use crate::itertools::Itertools;
 
 pub enum Op { SUM, MULTIPLY }
 
-pub enum Exp {
-    Constant{v: f32},
-    BinaryExp{op: Op, v1: Box<Exp>, v2: Box<Exp>},
-    ArrayExp{op: Op, vs: Vec<Exp>},
+pub struct TaggedExp {
+    pub tag: String,
+    pub e: Exp,
 }
 
-fn eval(e: &Exp) -> f32 {
-    match e {
+pub enum Exp {
+    Constant{v: f32},
+    BinaryExp{op: Op, v1: Box<TaggedExp>, v2: Box<TaggedExp>},
+    ArrayExp{op: Op, vs: Vec<TaggedExp>},
+}
+
+fn eval(e: &TaggedExp) -> f32 {
+    match &e.e {
         Exp::Constant{v} => *v,
         Exp::BinaryExp{op, v1, v2} => match op {
-            Op::SUM => eval(v1) + eval(v2),
-            Op::MULTIPLY => eval(v1) * eval(v2),
+            Op::SUM => eval(&v1) + eval(&v2),
+            Op::MULTIPLY => eval(&v1) * eval(&v2),
         },
         Exp::ArrayExp{op, vs} => match op {
             Op::SUM => vs.iter().fold(0.0, |acc, x| acc + eval(x)),
@@ -51,27 +56,29 @@ fn stringify_op(op: &Op) -> String {
 }
 
 // TODO(mrjones): indendentation in sub-ops
-fn stringify_exp(e: &Exp, indent: &str) -> String {
+fn stringify_exp(e: &TaggedExp, indent: &str) -> String {
     let new_indent = format!("{}  ", indent);
-    match e {
-        Exp::Constant{v} => format!("{}", v),
+    match &e.e {
+        Exp::Constant{v} => format!("{} {}", v, e.tag),
         Exp::BinaryExp{op, v1, v2} => format!(
-            "{}  {}\n{}{} {}\n{}==========\n{}= {}",
+            "{}  {}\n{}{} {}\n{}==========\n{}= {} {}",
             indent,
-            stringify_exp(v1, &new_indent),
+            stringify_exp(&v1, &new_indent),
             indent,
-            stringify_op(op),
-            stringify_exp(v2, &new_indent),
+            stringify_op(&op),
+            stringify_exp(&v2, &new_indent),
             indent,
             indent,
-            eval(e)),
+            eval(e),
+            e.tag),
         Exp::ArrayExp{op, vs} => {
-            let lines = vs.iter().map(|e| stringify_exp(e, &new_indent)).join(&format!("\n{}{} ", indent, stringify_op(op)));
-            return format!("  {}\n{}========\n{}= {}", lines, indent, indent, eval(e));
+            let lines = vs.iter().map(|e| stringify_exp(e, &new_indent)).join(&format!("\n{}{} ", indent, stringify_op(&op)));
+            return format!("  {}\n{}========\n{}= {} {}", lines, indent, indent, eval(e), e.tag);
         },
     }
 }
 
+/*
 fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>,
                       team: &team::Team,
                       population: &population::Population) -> Exp {
@@ -85,24 +92,34 @@ fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>
     }
 
     return Exp::ArrayExp{op: Op::SUM, vs: character_exps};
-}
+}*/
 
 
 #[cfg(test)]
 mod exp_tests {
     #[test]
     fn simple_exp() {
+        use super::TaggedExp;
         use super::Exp;
         use super::Op;
 
-        let e = Exp::BinaryExp{
-            op: Op::MULTIPLY,
-            v1: Box::new(Exp::Constant{v: 4.0}),
-            v2: Box::new(Exp::ArrayExp{
-                op: Op::SUM,
-                vs: vec![Exp::Constant{v: 1.1}, Exp::Constant{v: 1.2}, Exp::Constant{v:1.3}],
-            }),
-        };
+        let e = TaggedExp{
+            e: Exp::BinaryExp{
+                op: Op::MULTIPLY,
+                v1: Box::new(TaggedExp{e: Exp::Constant{v: 4.0}, tag: "base".to_string()}),
+                v2: Box::new(TaggedExp{
+                    e: Exp::ArrayExp{
+                        op: Op::SUM,
+                        vs: vec![
+                            TaggedExp{e: Exp::Constant{v: 1.1}, tag: "skill1".to_string()},
+                            TaggedExp{e: Exp::Constant{v: 1.2}, tag: "skill2".to_string()},
+                            TaggedExp{e: Exp::Constant{v: 1.3}, tag: "skill3".to_string()},
+                        ],
+                    },
+                    tag: "boost".to_string()}),
+            },
+            tag: "production".to_string(),
+        };;
         assert!(false, "\n{}", super::stringify_exp(&e, ""));
 
     }
