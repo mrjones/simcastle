@@ -7,19 +7,8 @@ use super::types;
 use crate::itertools::Itertools;
 
 // Food production model nodes
-// - Per-attribute weights ... linear(?)
-// - Team co-tenure
 // - Leadership
 // - Per-character experience/expertise
-
-// TODO: What's the type of "Boost"?
-// ApplyBoost(Value, Boost)  => Value
-//   Multiply([Boost]) => Boost
-//     CotenureModel(Team) => Boost
-//     Sum([Boost]) => Boost
-//       LinearAttributesModel(Team, Weights) => [Boost]
-//   BaseProduction(Team, Infrastructure) => Value
-
 
 pub enum Op { SUM, MULTIPLY }
 
@@ -69,9 +58,9 @@ fn stringify_op(op: &Op) -> String {
 fn stringify_exp(e: &TaggedExp, indent: &str) -> String {
     let new_indent = format!("{}  ", indent);
     match &e.e {
-        Exp::Constant{v} => format!("{} {}", v, e.tag),
+        Exp::Constant{v} => format!("{:+.3} {}", v, e.tag),
         Exp::BinaryExp{op, v1, v2} => format!(
-            "{}  {}\n{}{} {}\n{}==========\n{}= {} {}",
+            "{}  {}\n{}{} {}\n{}==========\n{}= {:+.3} {}",
             indent,
             stringify_exp(&v1, &new_indent),
             indent,
@@ -83,7 +72,7 @@ fn stringify_exp(e: &TaggedExp, indent: &str) -> String {
             e.tag),
         Exp::ArrayExp{op, vs} => {
             let lines = vs.iter().map(|e| stringify_exp(e, &new_indent)).join(&format!("\n{}{} ", indent, stringify_op(&op)));
-            return format!("  {}\n{}========\n{}= {} {}", lines, indent, indent, eval_exp(e), e.tag);
+            return format!("  {}\n{}========\n{}= {:+.3} {}", lines, indent, indent, eval_exp(e), e.tag);
         },
     }
 }
@@ -93,7 +82,7 @@ fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>
                       population: &population::Population) -> TaggedExp {
     let mut character_exps = vec![];
     for c in team.members().iter().map(|cid| population.character_with_id(*cid).unwrap()) {
-        let mut character_skills = vec![];
+        let mut character_skills = vec![TaggedExp{e: Exp::Constant{v: 1.0}, tag: "base".to_string()}];
         for (t, weight) in weights {
             character_skills.push(TaggedExp{
                 e: Exp::Constant{v: weight * (c.get_trait(*t) as f32 - 50.0) / 10.0},
@@ -146,7 +135,7 @@ fn cotenure_exp(team: &team::Team, rapport_tracker: &population::RapportTracker)
     };
 }
 
-fn production_exp(team: &team::Team, population: &population::Population) -> TaggedExp {
+fn food_production(team: &team::Team, population: &population::Population) -> TaggedExp {
     return TaggedExp{
         e: Exp::BinaryExp{
             op: Op::MULTIPLY,
@@ -163,6 +152,8 @@ fn production_exp(team: &team::Team, population: &population::Population) -> Tag
         tag: "production".to_string(),
     }
 }
+
+
 
 #[cfg(test)]
 mod exp_tests {
@@ -194,14 +185,6 @@ mod exp_tests {
     }
 }
 
-
-fn to_millis(i: Explanation<f32>) -> Explanation<types::Millis> {
-    return Explanation{
-        v: types::Millis::from_f32(i.v),
-        text: i.text,
-    };
-}
-
 pub struct FoodEconomy {
     pub production: TaggedExp,
     pub consumed_per_turn: types::Millis,
@@ -215,7 +198,7 @@ pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructu
 //    let base_production: f32 =
 //        std::cmp::min(food_infrastructure.acres_of_farmland, farmers.members().len() as i32) as f32;
     return FoodEconomy{
-        production: production_exp(farmers, population),
+        production: food_production(farmers, population),
         // 1.0 per person.. for now
         consumed_per_turn: types::Millis::from_i32(
             population.characters().len() as i32),
