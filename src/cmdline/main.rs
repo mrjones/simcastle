@@ -70,7 +70,10 @@ fn handle_prompts(state: &mut simcastle_core::gamestate::GameState, prompts: Vec
                     if input_array.len() > 0 && input_array[0].len() == 1 {
                         match input_array[0].chars().next() {
                             Some('y') => {
-                                state.accept_asylum_seeker(c);
+                                state.execute_command(
+                                    &simcastle_core::gamestate::Command::AddCharacter{
+                                        character: c.clone(),
+                                    });
                                 break;
                             },
                             Some('n') => {

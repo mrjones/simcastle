@@ -27,7 +27,12 @@ impl GameStateMachine {
         match command {
             Command::AssignToTeam{cid, job} => {
                 self.workforce.assign(*cid, *job);
-            }
+            },
+            Command::AddCharacter{character} => {
+                let cid = character.id();
+                self.population.add(character.clone());
+                self.workforce.add_unassigned(cid);
+            },
         }
     }
 
@@ -50,6 +55,7 @@ pub struct GameState {
 
 pub enum Command {
     AssignToTeam{cid: character::CharacterId, job: workforce::Job},
+    AddCharacter{character: character::Character}
 }
 
 pub enum InternalMutation {
@@ -124,12 +130,6 @@ impl GameState {
 
     pub fn castle(&self) -> &castle::Castle {
         return &self.machine.castle;
-    }
-
-    pub fn accept_asylum_seeker(&mut self, c: character::Character) {
-        let cid = c.id();
-        self.machine.population.add(c);
-        self.machine.workforce.add_unassigned(cid);
     }
 
     pub fn turn(&self) -> i32 {
