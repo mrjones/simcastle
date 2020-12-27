@@ -25,8 +25,16 @@ struct GameStateMachine {
 impl GameStateMachine {
     fn execute_command(&mut self, command: &Command) {
         match command {
-            Command::AssignToTeam(cid, job) => {
+            Command::AssignToTeam{cid, job} => {
                 self.workforce.assign(*cid, *job);
+            }
+        }
+    }
+
+    fn execute_mutation(&mut self, mutation: &InternalMutation) {
+        match mutation {
+            InternalMutation::AdvanceTurn{turn} => {
+                self.turn = *turn;
             }
         }
     }
@@ -41,7 +49,11 @@ pub struct GameState {
 }
 
 pub enum Command {
-    AssignToTeam(character::CharacterId, workforce::Job),
+    AssignToTeam{cid: character::CharacterId, job: workforce::Job},
+}
+
+pub enum InternalMutation {
+    AdvanceTurn{turn: i32},
 }
 
 impl GameState {
@@ -68,8 +80,6 @@ impl GameState {
 
     // TODO(mrjones): Make GameState immutable, and make this return a copy?
     pub fn advance_turn(&mut self) -> Vec<Prompt> {
-        self.machine.turn = self.machine.turn + 1;
-
         // TODO(mrjones): Starvation
         self.machine.food = std::cmp::min(
             self.machine.castle.food_infrastructure.food_storage,
@@ -80,6 +90,12 @@ impl GameState {
         for (c1, c2) in self.machine.workforce.farmers().member_pairs() {
             self.machine.population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
         }
+
+        // TODO: Need to decide what explicitly gets written down, and what gets
+        // recomputed by the execute_mutation framework...
+        self.machine.execute_mutation(&InternalMutation::AdvanceTurn{
+            turn: self.machine.turn + 1,
+        });
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {
@@ -104,10 +120,6 @@ impl GameState {
 
     pub fn workforce(&self) -> &workforce::Workforce {
         return &self.machine.workforce;
-    }
-
-    pub fn mut_workforce(&mut self) -> &mut workforce::Workforce {
-        return &mut self.machine.workforce;
     }
 
     pub fn castle(&self) -> &castle::Castle {
