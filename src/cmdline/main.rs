@@ -98,7 +98,8 @@ fn set_assignment(args: &Vec<String>, game: &mut simcastle_core::gamestate::Game
 
     char_id.map(|char_id| { job.map(|job| {
         println!("Making character {} into a {:?}", char_id, job);
-        game.mut_workforce().assign(char_id, job);
+//        game.mut_workforce().assign(char_id, job);
+        game.execute_command(&simcastle_core::gamestate::Command::AssignToTeam(char_id, job));
     })});
 }
 

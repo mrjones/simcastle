@@ -22,12 +22,26 @@ struct GameStateMachine {
     character_gen: character::CharacterFactory,
 }
 
+impl GameStateMachine {
+    fn execute_command(&mut self, command: &Command) {
+        match command {
+            Command::AssignToTeam(cid, job) => {
+                self.workforce.assign(*cid, *job);
+            }
+        }
+    }
+}
+
 pub enum Prompt {
     AsylumSeeker(character::Character),
 }
 
 pub struct GameState {
     machine: GameStateMachine,
+}
+
+pub enum Command {
+    AssignToTeam(character::CharacterId, workforce::Job),
 }
 
 impl GameState {
@@ -46,6 +60,10 @@ impl GameState {
                 character_gen: character_gen,
             },
         };
+    }
+
+    pub fn execute_command(&mut self, command: &Command) {
+        self.machine.execute_command(command);
     }
 
     // TODO(mrjones): Make GameState immutable, and make this return a copy?
@@ -82,10 +100,6 @@ impl GameState {
 
     pub fn population(&self) -> &population::Population {
         return &self.machine.population;
-    }
-
-    pub fn mut_population(&mut self) -> &mut population::Population {
-        return &mut self.machine.population;
     }
 
     pub fn workforce(&self) -> &workforce::Workforce {
