@@ -3,6 +3,7 @@ pub mod character;
 pub mod gamestate;
 pub mod initialsetup;
 pub mod population;
+pub mod statemachine;
 pub mod team;
 pub mod types;
 pub mod workforce;

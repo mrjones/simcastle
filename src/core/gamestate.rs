@@ -2,6 +2,7 @@ use super::castle;
 use super::character;
 use super::economy;
 use super::population;
+use super::statemachine;
 use super::types;
 use super::workforce;
 
@@ -11,6 +12,10 @@ use serde::{Deserialize, Serialize};
 pub struct GameSpec {
     pub initial_potential_characters: usize,
     pub initial_characters: usize,
+}
+
+pub struct GameStateT {
+
 }
 
 struct GameStateMachine {
@@ -146,6 +151,7 @@ pub enum Prompt {
 
 pub struct GameState {
     machine: GameStateMachine,
+    machine2: statemachine::StateMachine<GameStateT, PersisterEntry>,
 }
 
 
@@ -175,8 +181,12 @@ impl GameState {
                 food: types::Millis::from_i32(2 * spec.initial_characters as i32),
                 character_gen: character_gen,
             },
+            machine2: statemachine::StateMachine::new(
+                GameStateT{}, Box::new(&GameState::apply)),
         };
     }
+
+    fn apply(state: &mut GameStateT, delta: &PersisterEntry) { }
 
     pub fn execute_command(&mut self, command: &Command) {
         self.machine.execute_command(command);
