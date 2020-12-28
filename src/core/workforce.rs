@@ -1,7 +1,9 @@
 use super::character;
 use super::team;
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum Job {
     FARMER,
 }

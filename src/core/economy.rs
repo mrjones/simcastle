@@ -180,8 +180,7 @@ mod exp_tests {
             },
             tag: "production".to_string(),
         };
-        assert!(false, "\n{}", super::stringify_exp(&e, ""));
-
+        assert_eq!(4.0 * (1.1 + 1.2 + 1.3), e.eval(), "Error evaluating: {}", e.stringify(""));
     }
 }
 

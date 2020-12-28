@@ -6,6 +6,7 @@ use super::types;
 use super::workforce;
 
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 pub struct GameSpec {
     pub initial_potential_characters: usize,
@@ -20,6 +21,100 @@ struct GameStateMachine {
 
     pub food: types::Millis,
     character_gen: character::CharacterFactory,
+}
+
+
+#[derive(Deserialize, Serialize)]
+enum PersisterEntry {
+    Command{c: Command},
+    InternalMutation{m: InternalMutation},
+}
+
+
+// TODO list:
+// - handle errors (results)
+// - internal mutations too
+// - open and write to file
+// - move to separate module
+// - replay (and test)
+// - checkpointing
+struct Saver<'a> {
+    sink: &'a mut dyn std::io::Write,
+}
+
+impl <'a> Saver<'a> {
+    pub fn append_command(&mut self, command: Command) {
+        let e = PersisterEntry::Command{c: command};
+        let as_json = serde_json::to_string(&e).expect("XXX");
+        self.sink.write(as_json.as_bytes()).expect("xxx");
+        self.sink.write("\n".as_bytes()).expect("xxx");
+    }
+}
+
+struct Loader<BRT: std::io::BufRead> {
+//    reader: &'a mut BRT,
+    lines: std::io::Lines<BRT>,
+}
+
+impl <BRT: std::io::BufRead> Loader<BRT> {
+    pub fn replay(self) -> impl std::iter::Iterator<Item=PersisterEntry> {
+        return self.lines.map(|line| {
+            let line = line.unwrap();
+            return serde_json::from_str(&line)
+                .expect(&format!("parsing: {}", line));
+        });
+    }
+}
+
+#[cfg(test)]
+mod persister_tests {
+    use super::Saver;
+    use super::Loader;
+
+    #[test]
+    fn simple() {
+        let mut data: Vec<u8> = vec![];
+
+        let cmd1 = super::Command::AddCharacter{
+            character: super::character::Character::new_random(super::character::CharacterId(99)),
+        };
+
+        let cmd2 = super::Command::AssignToTeam{
+            cid: crate::character::CharacterId(99),
+            job: crate::workforce::Job::FARMER,
+        };
+
+        {
+            let mut saver = Saver{
+                sink: &mut data,
+            };
+
+            saver.append_command(cmd1);
+            saver.append_command(cmd2);
+        }
+
+        let reader = std::io::BufReader::new(data.as_slice());
+        use std::io::BufRead;
+        let loader = Loader{
+            lines: reader.lines(),
+        };
+
+        let results: Vec<super::PersisterEntry> = loader.replay().collect();
+
+        assert_eq!(2, results.len(), "Expected one log");
+        match &results[0] {
+            &super::PersisterEntry::Command{ref c} => {
+                match c {
+                    &super::Command::AddCharacter{ref character} => {
+                        assert_eq!(character.id(), crate::character::CharacterId(99));
+//                        assert_eq!(job, crate::workforce::Job::FARMER);
+                    },
+                    _ => assert!(false, "Wrong Command type"),
+                }
+            },
+            _ => assert!(false, "Wrong PersisterEntry type"),
+        }
+    }
 }
 
 impl GameStateMachine {
@@ -53,11 +148,14 @@ pub struct GameState {
     machine: GameStateMachine,
 }
 
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Command {
     AssignToTeam{cid: character::CharacterId, job: workforce::Job},
     AddCharacter{character: character::Character}
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum InternalMutation {
     AdvanceTurn{turn: i32},
 }

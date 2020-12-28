@@ -4,8 +4,9 @@ extern crate rand_distr;
 extern crate std;
 
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Trait {
     Intelligence,
     Strength,
@@ -16,7 +17,7 @@ pub struct TraitInfo {
     pub string3: String,
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct CharacterId(pub i64);
 
 impl std::fmt::Display for CharacterId {
@@ -60,7 +61,7 @@ impl CharacterFactory {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Character {
     id: CharacterId,
     name: String,

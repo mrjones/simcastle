@@ -10,3 +10,5 @@ pub mod workforce;
 mod economy;
 
 extern crate itertools;
+extern crate serde;
+extern crate serde_json;
