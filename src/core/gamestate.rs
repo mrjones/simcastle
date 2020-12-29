@@ -6,6 +6,7 @@ use super::statemachine;
 use super::types;
 use super::workforce;
 
+use anyhow::Context;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -96,20 +97,22 @@ impl GameState {
         });
     }
 
-    fn restore_helper<P: AsRef<std::path::Path>>(filename: &P) -> anyhow::Result<GameStateT> {
+    fn restore_helper<P: AsRef<std::path::Path> + std::fmt::Debug>(filename: &P) -> anyhow::Result<GameStateT> {
         use std::io::BufRead;
 
-        let restore_file = std::fs::File::open(filename).expect("opening file for restore");
+        let restore_file = std::fs::File::open(filename)
+            .with_context(|| format!("Opening {:?} for restore", *filename))?;
         let restore_reader = std::io::BufReader::new(restore_file);
         return Ok(statemachine::PersistentStateMachine::recover(
             &mut restore_reader.lines().map(|r| r.expect("error reading line")),
             &apply_mutation)?);
     }
 
-    pub fn restore<P: AsRef<std::path::Path>>(filename: P,
-                                              character_gen: character::CharacterFactory) -> anyhow::Result<GameState> {
+    pub fn restore<P: AsRef<std::path::Path> + std::fmt::Debug>(filename: P,
+                                                                character_gen: character::CharacterFactory) -> anyhow::Result<GameState> {
         let state = GameState::restore_helper(&filename)?;
-        let save_file = std::fs::OpenOptions::new().write(true).append(true).open(filename).expect("opening file for save");
+        let save_file = std::fs::OpenOptions::new().write(true).append(true).open(&filename)
+            .with_context(|| format!("Opening {:?} for as save_file", &filename))?;
 
         return Ok(GameState{
             character_gen: character_gen,
