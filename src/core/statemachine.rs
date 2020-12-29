@@ -1,5 +1,8 @@
+// TODO:
+// - Error handling!
+// - Checkpoint & trim
+
 use serde::{Deserialize, Serialize};
-//use serde::de::DeserializeOwned;
 
 pub struct StateMachine<S, D> {
     state: S,
@@ -60,7 +63,9 @@ pub struct PersistentStateMachine<'io, S: serde::de::DeserializeOwned + serde::S
 }
 
 impl <'io, S: serde::de::DeserializeOwned + serde::Serialize + Copy, D: serde::de::DeserializeOwned + serde::Serialize + Copy> PersistentStateMachine<'io, S, D> {
-    pub fn new(initial_state: S, apply_fn: Box<dyn Fn(&mut S, &D)>, saver: &'io mut Saver<'io, S, D>) -> PersistentStateMachine<S, D> {
+    pub fn init(initial_state: S,
+                apply_fn: Box<dyn Fn(&mut S, &D)>,
+                saver: &'io mut Saver<'io, S, D>) -> PersistentStateMachine<S, D> {
         saver.append_checkpoint(&initial_state);
         return PersistentStateMachine{
             machine: StateMachine::new(initial_state, apply_fn),
@@ -68,7 +73,8 @@ impl <'io, S: serde::de::DeserializeOwned + serde::Serialize + Copy, D: serde::d
         };
     }
 
-    pub fn recover<'a, >(lines: &mut dyn Iterator<Item=String>, apply_fn: &dyn Fn(&mut S, &D)) -> S {
+    pub fn recover<'a, >(lines: &mut dyn Iterator<Item=String>,
+                         apply_fn: &dyn Fn(&mut S, &D)) -> S {
         let head = lines.next().expect("recover: no head");
         let initial_entry: LogEntry<S, D> = serde_json::from_str(&head).expect("recover: couldn't parse initial CP");
 
@@ -102,10 +108,8 @@ impl <'io, S: serde::de::DeserializeOwned + serde::Serialize + Copy, D: serde::d
     }
 }
 
-
 #[cfg(test)]
 mod statemachine_tests {
-    use super::LogEntry;
     use super::PersistentStateMachine;
     use super::Saver;
 
@@ -131,7 +135,7 @@ mod statemachine_tests {
                 phantom_s: std::marker::PhantomData,
             };
 
-            let mut psm = PersistentStateMachine::new(
+            let mut psm = PersistentStateMachine::init(
                 Total{v: 0},
                 Box::new(apply_fn),
                 &mut saver);
