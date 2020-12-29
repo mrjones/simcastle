@@ -131,17 +131,9 @@ impl GameState {
             self.machine.state().castle.food_infrastructure.food_storage,
             self.machine.state().food + self.food_delta());
 
-        self.machine.apply(&MutationT::SetFood{v: food});
-
         // TODO: Need to decide what explicitly gets written down, and what gets
         // recomputed by the execute_mutation framework...
-
-//        self.machine.unsafe_mutable_state().workforce.advance_turn();
-
-//        for (c1, c2) in self.machine.state().workforce.farmers().member_pairs() {
-//            self.machine.unsafe_mutable_state().population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
-//        }
-
+        self.machine.apply(&MutationT::SetFood{v: food});
         self.machine.apply(&MutationT::EndTurn);
 
         let mut prompts = vec![];
