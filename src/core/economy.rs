@@ -86,6 +86,7 @@ fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>
                       infrastructure: &castle::FoodInfrastructure) -> TaggedExp {
     let mut character_exps = vec![];
 
+    // TODO(mrjones): Consider sublinear (rather than 0) growth once 'farmers > acres of farmland'
     let base_production = if team.members().len() as i32 <=  infrastructure.acres_of_farmland {
         TaggedExp{e: Exp::Constant{v: 1.0}, tag: "base".to_string()}
     } else {
@@ -212,9 +213,6 @@ pub struct FoodEconomy {
 }
 
 pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructure, population: &population::Population) -> FoodEconomy {
-    // TODO(mrjones): Consider sublinear (rather than 0) growth once 'farmers > acres of farmland'
-//    let base_production: f32 =
-//        std::cmp::min(food_infrastructure.acres_of_farmland, farmers.members().len() as i32) as f32;
     return FoodEconomy{
         production: food_production(farmers, population, food_infrastructure),
         // 1.0 per person.. for now
