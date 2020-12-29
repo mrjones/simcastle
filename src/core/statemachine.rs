@@ -21,10 +21,6 @@ impl <S, D> StateMachine<S, D> {
     pub fn state(&self) -> &S {
         return &self.state;
     }
-
-    pub fn unsafe_mutable_state(&mut self) -> &mut S {
-        return &mut self.state;
-    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -101,10 +97,6 @@ impl <'io, S: serde::de::DeserializeOwned + serde::Serialize + Copy, D: serde::d
 
     pub fn state(&self) -> &S {
         return self.machine.state();
-    }
-
-    pub fn unsafe_mutable_state(&mut self) -> &mut S {
-        return self.machine.unsafe_mutable_state();
     }
 }
 

@@ -7,7 +7,6 @@ use super::types;
 use super::workforce;
 
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 
 pub struct GameSpec {
     pub initial_potential_characters: usize,
@@ -30,14 +29,20 @@ pub enum UserCommand {
 }
 
 enum MutationT {
-    IncrementTurn,
+    EndTurn,
     SetFood{v: types::Millis},
     UserCommand{cmd: UserCommand},
 }
 
 fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
     match &m {
-        &MutationT::IncrementTurn => state.turn = state.turn + 1,
+        &MutationT::EndTurn => {
+            state.turn = state.turn + 1;
+            state.workforce.advance_turn();
+            for (c1, c2) in state.workforce.farmers().member_pairs() {
+                state.population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
+            }
+        }
         &MutationT::SetFood{v} => state.food = *v,
         &MutationT::UserCommand{cmd} => apply_user_command(state, cmd),
     }
@@ -91,15 +96,17 @@ impl GameState {
             self.machine.state().food + self.food_delta());
 
         self.machine.apply(&MutationT::SetFood{v: food});
-        self.machine.unsafe_mutable_state().workforce.advance_turn();
-
-        for (c1, c2) in self.machine.state().workforce.farmers().member_pairs() {
-            self.machine.unsafe_mutable_state().population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
-        }
 
         // TODO: Need to decide what explicitly gets written down, and what gets
         // recomputed by the execute_mutation framework...
-        self.machine.apply(&MutationT::IncrementTurn);
+
+//        self.machine.unsafe_mutable_state().workforce.advance_turn();
+
+//        for (c1, c2) in self.machine.state().workforce.farmers().member_pairs() {
+//            self.machine.unsafe_mutable_state().population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
+//        }
+
+        self.machine.apply(&MutationT::EndTurn);
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {
