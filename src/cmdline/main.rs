@@ -39,7 +39,7 @@ fn begin_game() -> simcastle_core::gamestate::GameState {
 fn restore_game() -> simcastle_core::gamestate::GameState {
     return simcastle_core::gamestate::GameState::restore(
         "/tmp/simcastle.save",
-        simcastle_core::character::CharacterFactory::new());
+        simcastle_core::character::CharacterFactory::new()).expect("TODO");
 }
 
 fn main() {

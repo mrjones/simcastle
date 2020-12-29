@@ -96,28 +96,28 @@ impl GameState {
         };
     }
 
-    fn restore_helper<P: AsRef<std::path::Path>>(filename: &P) -> GameStateT {
+    fn restore_helper<P: AsRef<std::path::Path>>(filename: &P) -> anyhow::Result<GameStateT> {
         use std::io::BufRead;
 
         let restore_file = std::fs::File::open(filename).expect("opening file for restore");
         let restore_reader = std::io::BufReader::new(restore_file);
-        return statemachine::PersistentStateMachine::recover(
-            &mut restore_reader.lines().map(|r| r.unwrap()),
-            &apply_mutation).expect("TODO");
+        return Ok(statemachine::PersistentStateMachine::recover(
+            &mut restore_reader.lines().map(|r| r.expect("error reading line")),
+            &apply_mutation)?);
     }
 
     pub fn restore<P: AsRef<std::path::Path>>(filename: P,
-                                              character_gen: character::CharacterFactory) -> GameState {
-        let state = GameState::restore_helper(&filename);
+                                              character_gen: character::CharacterFactory) -> anyhow::Result<GameState> {
+        let state = GameState::restore_helper(&filename)?;
         let save_file = std::fs::OpenOptions::new().write(true).append(true).open(filename).expect("opening file for save");
 
-        return GameState{
+        return Ok(GameState{
             character_gen: character_gen,
             machine: statemachine::PersistentStateMachine::init(
                 state,
                 Box::new(apply_mutation),
-                statemachine::Saver::new(std::rc::Rc::new(std::sync::Mutex::new(save_file)))).expect("TODO"),
-        };
+                statemachine::Saver::new(std::rc::Rc::new(std::sync::Mutex::new(save_file))))?,
+        });
     }
 
     pub fn execute_command(&mut self, command: &UserCommand) -> anyhow::Result<()> {
