@@ -54,7 +54,10 @@ fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
 fn apply_user_command(state: &mut GameStateT, c: &UserCommand) {
     match &c {
         &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(cid.clone(), job.clone()),
-        &UserCommand::AddCharacter{character} => state.population.add(character.clone()),
+        &UserCommand::AddCharacter{character} => {
+            state.population.add(character.clone());
+            state.workforce.add_unassigned(character.id());
+        },
     }
 }
 
