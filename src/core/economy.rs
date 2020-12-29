@@ -10,14 +10,17 @@ use crate::itertools::Itertools;
 // - Leadership
 // - Per-character experience/expertise
 
+#[derive(Clone)]
 pub enum Op { SUM, MULTIPLY }
 
 // TODO: Unify TaggedExp and Exp
+#[derive(Clone)]
 pub struct TaggedExp {
     pub tag: String,
     pub e: Exp,
 }
 
+#[derive(Clone)]
 pub enum Exp {
     Constant{v: f32},
     BinaryExp{op: Op, v1: Box<TaggedExp>, v2: Box<TaggedExp>},
@@ -79,10 +82,23 @@ fn stringify_exp(e: &TaggedExp, indent: &str) -> String {
 
 fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>,
                       team: &team::Team,
-                      population: &population::Population) -> TaggedExp {
+                      population: &population::Population,
+                      infrastructure: &castle::FoodInfrastructure) -> TaggedExp {
     let mut character_exps = vec![];
+
+    let base_production = if team.members().len() as i32 <=  infrastructure.acres_of_farmland {
+        TaggedExp{e: Exp::Constant{v: 1.0}, tag: "base".to_string()}
+    } else {
+        TaggedExp{
+            e: Exp::Constant{
+                v: infrastructure.acres_of_farmland as f32 / team.members().len() as f32,
+            },
+            tag: "base (constrained by acres_of_farmland)".to_string(),
+        }
+    };
+
     for c in team.members().iter().map(|cid| population.character_with_id(cid.clone()).unwrap()) {
-        let mut character_skills = vec![TaggedExp{e: Exp::Constant{v: 1.0}, tag: "base".to_string()}];
+        let mut character_skills = vec![base_production.clone()];
         for (t, weight) in weights {
             character_skills.push(TaggedExp{
                 e: Exp::Constant{v: weight * (c.get_trait(*t) as f32 - 50.0) / 10.0},
@@ -135,7 +151,9 @@ fn cotenure_exp(team: &team::Team, rapport_tracker: &population::RapportTracker)
     };
 }
 
-fn food_production(team: &team::Team, population: &population::Population) -> TaggedExp {
+fn food_production(team: &team::Team,
+                   population: &population::Population,
+                   infrastructure: &castle::FoodInfrastructure) -> TaggedExp {
     return TaggedExp{
         e: Exp::BinaryExp{
             op: Op::MULTIPLY,
@@ -146,7 +164,8 @@ fn food_production(team: &team::Team, population: &population::Population) -> Ta
                     character::Trait::WorkEthic => 0.1,
                 },
                 team,
-                population)),
+                population,
+                infrastructure)),
             v2: Box::new(cotenure_exp(team, population.rapport_tracker())),
         },
         tag: "production".to_string(),
@@ -197,7 +216,7 @@ pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructu
 //    let base_production: f32 =
 //        std::cmp::min(food_infrastructure.acres_of_farmland, farmers.members().len() as i32) as f32;
     return FoodEconomy{
-        production: food_production(farmers, population),
+        production: food_production(farmers, population, food_infrastructure),
         // 1.0 per person.. for now
         consumed_per_turn: types::Millis::from_i32(
             population.characters().len() as i32),
