@@ -1,7 +1,9 @@
 use super::character;
 
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Team {
     members: std::collections::HashSet<character::CharacterId>,
 }
@@ -38,7 +40,7 @@ impl Team {
     pub fn member_pairs(&self) -> Vec<(character::CharacterId, character::CharacterId)>{
         return self.members().iter().combinations(2).map(|v| {
             assert_eq!(2, v.len());
-            return (*v[0], *v[1]);
+            return (v[0].clone(), v[1].clone());
         }).collect();
     }
 

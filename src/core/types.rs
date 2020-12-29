@@ -1,6 +1,7 @@
 use std;
+use serde::{Deserialize, Serialize};
 
-#[derive(Eq, Copy, Clone, Debug)]
+#[derive(Eq, Copy, Clone, Debug, Deserialize, Serialize)]
 pub struct Millis {
     rep: i32,
 }

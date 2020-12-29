@@ -23,10 +23,11 @@ impl InitialSetup {
         return &self.spec;
     }
 
-    pub fn begin(self, selected_characters: std::collections::HashSet<character::CharacterId>) -> gamestate::GameState {
+    pub fn begin(self, selected_characters: std::collections::HashSet<character::CharacterId>, save_file: std::fs::File) -> gamestate::GameState {
         return gamestate::GameState::init(
             self.spec,
             self.character_candidates.into_iter().filter(|c| selected_characters.contains(&c.id())).collect(),
-            self.character_gen);
+            self.character_gen,
+            save_file);
     }
 }

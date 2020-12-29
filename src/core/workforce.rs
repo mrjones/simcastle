@@ -8,6 +8,7 @@ pub enum Job {
     FARMER,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Workforce {
     farmers: team::Team,
     unassigned: team::Team,

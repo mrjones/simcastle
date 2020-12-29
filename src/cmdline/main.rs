@@ -22,7 +22,8 @@ fn main() {
         }
     }
 
-    let mut game = setup.begin(team);
+    let save_file = std::fs::File::open("/tmp/simcastle.save").expect("save file");
+    let mut game = setup.begin(team, save_file);
 
     print_workforce(&game);
     print_state(&game);

@@ -1,5 +1,8 @@
 use super::character;
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Population {
     characters: Vec<character::Character>,
 
@@ -36,6 +39,7 @@ impl Population {
     }
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct RapportTracker {
     turns_on_same_team: std::collections::HashMap<String, i32>,
 }

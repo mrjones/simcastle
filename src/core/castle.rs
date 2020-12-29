@@ -1,10 +1,14 @@
 use super::gamestate;
 use super::types;
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Castle {
     pub food_infrastructure: FoodInfrastructure,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct FoodInfrastructure {
     pub food_storage: types::Millis,
     pub acres_of_farmland: i32,

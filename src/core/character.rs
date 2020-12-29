@@ -17,7 +17,7 @@ pub struct TraitInfo {
     pub string3: String,
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct CharacterId(pub i64);
 
 impl std::fmt::Display for CharacterId {

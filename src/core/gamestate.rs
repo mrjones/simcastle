@@ -7,12 +7,14 @@ use super::types;
 use super::workforce;
 
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 pub struct GameSpec {
     pub initial_potential_characters: usize,
     pub initial_characters: usize,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct GameStateT {
     pub turn: i32,
     pub food: types::Millis,
@@ -22,12 +24,13 @@ pub struct GameStateT {
     pub castle: castle::Castle,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub enum UserCommand {
     AssignToTeam{cid: character::CharacterId, job: workforce::Job},
     AddCharacter{character: character::Character}
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 enum MutationT {
     EndTurn,
     SetFood{v: types::Millis},
@@ -50,7 +53,7 @@ fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
 
 fn apply_user_command(state: &mut GameStateT, c: &UserCommand) {
     match &c {
-        &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(*cid, *job),
+        &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(cid.clone(), job.clone()),
         &UserCommand::AddCharacter{character} => state.population.add(character.clone()),
     }
 }
@@ -60,19 +63,23 @@ pub enum Prompt {
 }
 
 pub struct GameState {
-    machine: statemachine::StateMachine<GameStateT, MutationT>,
+//    save_file: &'svf mut std::fs::File,
+    machine: statemachine::PersistentStateMachine<GameStateT, MutationT>,
     character_gen: character::CharacterFactory,
 }
 
-
 impl GameState {
-    pub fn init(spec: GameSpec, initial_characters: Vec<character::Character>, character_gen: character::CharacterFactory) -> GameState {
+
+    pub fn init(spec: GameSpec,
+                initial_characters: Vec<character::Character>,
+                character_gen: character::CharacterFactory,
+                save_file: std::fs::File) -> GameState {
         assert_eq!(initial_characters.len(), spec.initial_characters as usize,
                    "Please pick {} initial characters ({} selected)",
                    spec.initial_characters, initial_characters.len());
         return GameState{
             character_gen: character_gen,
-            machine: statemachine::StateMachine::new(
+            machine: statemachine::PersistentStateMachine::init(
                 GameStateT{
                     turn: 0,
                     food: types::Millis::from_i32(2 * spec.initial_characters as i32),
@@ -80,7 +87,10 @@ impl GameState {
                         initial_characters.iter().map(character::Character::id).collect()),
                     population: population::Population::new(initial_characters),
                     castle: castle::Castle::init(&spec),
-                }, Box::new(apply_mutation)),
+                },
+                Box::new(apply_mutation),
+                statemachine::Saver::new(std::rc::Rc::new(std::sync::Mutex::new(save_file))),
+            ),
         };
     }
 

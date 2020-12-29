@@ -29,39 +29,51 @@ pub enum LogEntry<S, D>{
     Delta(D),
 }
 
-pub struct Saver<'a, S: serde::Serialize, D: serde::Serialize> {
-    sink: &'a mut dyn std::io::Write,
+pub struct Saver<S: serde::Serialize + Clone, D: serde::Serialize + Clone> {
+    sink: std::rc::Rc<std::sync::Mutex<dyn std::io::Write>>,
     // https://doc.rust-lang.org/std/marker/struct.PhantomData.html#examples
     phantom_s: std::marker::PhantomData<S>,
     phantom_d: std::marker::PhantomData<D>,
 }
 
-impl <'a, S: serde::Serialize + Copy, D: serde::Serialize + Copy> Saver<'a, S, D> {
+impl <S: serde::Serialize + Clone, D: serde::Serialize + Clone> Saver<S, D> {
+    pub fn new(sink: std::rc::Rc<std::sync::Mutex<dyn std::io::Write>>) -> Saver<S, D> {
+        return Saver{
+            sink: sink,
+            phantom_s: std::marker::PhantomData,
+            phantom_d: std::marker::PhantomData,
+        };
+    }
+
     pub fn append_checkpoint(&mut self, checkpoint: &S) {
-        let e = LogEntry::<S, D>::Checkpoint(*checkpoint);
+        let e = LogEntry::<S, D>::Checkpoint(checkpoint.clone());
         let as_json = serde_json::to_string(&e).expect("XXX");
-        self.sink.write(as_json.as_bytes()).expect("xxx");
-        self.sink.write("\n".as_bytes()).expect("xxx");
+        let mut sink = self.sink.lock().expect("rc::get_mut");
+        sink.write(as_json.as_bytes()).expect("xxx");
+        sink.write("\n".as_bytes()).expect("xxx");
 
     }
 
     pub fn append_delta(&mut self, delta: &D) {
-        let e = LogEntry::<S, D>::Delta(*delta);
+        let e = LogEntry::<S, D>::Delta(delta.clone());
         let as_json = serde_json::to_string(&e).expect("XXX");
-        self.sink.write(as_json.as_bytes()).expect("xxx");
-        self.sink.write("\n".as_bytes()).expect("xxx");
+        let mut sink = self.sink.lock().expect("rc::get_mut");
+        sink.write(as_json.as_bytes()).expect("xxx");
+        sink.write("\n".as_bytes()).expect("xxx");
     }
+
+
 }
 
-pub struct PersistentStateMachine<'io, S: serde::de::DeserializeOwned + serde::Serialize, D: serde::de::DeserializeOwned + serde::Serialize> {
+pub struct PersistentStateMachine<S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::DeserializeOwned + serde::Serialize + Clone> {
     machine: StateMachine<S, D>,
-    saver: &'io mut Saver<'io, S, D>,
+    saver: Saver<S, D>,
 }
 
-impl <'io, S: serde::de::DeserializeOwned + serde::Serialize + Copy, D: serde::de::DeserializeOwned + serde::Serialize + Copy> PersistentStateMachine<'io, S, D> {
+impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::DeserializeOwned + serde::Serialize + Clone> PersistentStateMachine<S, D> {
     pub fn init(initial_state: S,
                 apply_fn: Box<dyn Fn(&mut S, &D)>,
-                saver: &'io mut Saver<'io, S, D>) -> PersistentStateMachine<S, D> {
+                mut saver: Saver<S, D>) -> PersistentStateMachine<S, D> {
         saver.append_checkpoint(&initial_state);
         return PersistentStateMachine{
             machine: StateMachine::new(initial_state, apply_fn),
@@ -69,8 +81,8 @@ impl <'io, S: serde::de::DeserializeOwned + serde::Serialize + Copy, D: serde::d
         };
     }
 
-    pub fn recover<'a, >(lines: &mut dyn Iterator<Item=String>,
-                         apply_fn: &dyn Fn(&mut S, &D)) -> S {
+    pub fn recover(lines: &mut dyn Iterator<Item=String>,
+                   apply_fn: &dyn Fn(&mut S, &D)) -> S {
         let head = lines.next().expect("recover: no head");
         let initial_entry: LogEntry<S, D> = serde_json::from_str(&head).expect("recover: couldn't parse initial CP");
 
@@ -115,14 +127,14 @@ mod statemachine_tests {
 
     #[test]
     fn simple() {
-        let mut logfile: Vec<u8> = vec![];
+        let logfile: std::rc::Rc<std::sync::Mutex<Vec<u8>>> = std::rc::Rc::new(std::sync::Mutex::new(vec![]));
 
         let apply_fn =
             |state: &mut Total, delta: &Increment| state.v += delta.i;
 
         {
-            let mut saver = Saver::<Total, Increment>{
-                sink: &mut logfile,
+            let saver = Saver::<Total, Increment>{
+                sink: logfile.clone(),
                 phantom_d: std::marker::PhantomData,
                 phantom_s: std::marker::PhantomData,
             };
@@ -130,21 +142,21 @@ mod statemachine_tests {
             let mut psm = PersistentStateMachine::init(
                 Total{v: 0},
                 Box::new(apply_fn),
-                &mut saver);
+                saver);
 
-            assert_eq!(0, psm.state().v);
+            assert_eq!(0, psm.state().v, "Initial state check");
 
             psm.apply(&Increment{i: 1});
-            assert_eq!(1, psm.state().v);
+            assert_eq!(1, psm.state().v, "+1 state check");
 
             psm.apply(&Increment{i: 10});
-            assert_eq!(11, psm.state().v);
+            assert_eq!(11, psm.state().v, "+10 state check");
         }
 
         use std::io::BufRead;
 
         let state = PersistentStateMachine::recover(
-            &mut logfile.lines().map(|res| res.unwrap()), &apply_fn);
+            &mut logfile.lock().unwrap().lines().map(|res| res.unwrap()), &apply_fn);
         assert_eq!(11, state.v);
     }
 }

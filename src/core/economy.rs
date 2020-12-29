@@ -81,7 +81,7 @@ fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>
                       team: &team::Team,
                       population: &population::Population) -> TaggedExp {
     let mut character_exps = vec![];
-    for c in team.members().iter().map(|cid| population.character_with_id(*cid).unwrap()) {
+    for c in team.members().iter().map(|cid| population.character_with_id(cid.clone()).unwrap()) {
         let mut character_skills = vec![TaggedExp{e: Exp::Constant{v: 1.0}, tag: "base".to_string()}];
         for (t, weight) in weights {
             character_skills.push(TaggedExp{
