@@ -1,5 +1,4 @@
 // TODO:
-// - Error handling!
 // - Checkpoint & trim
 
 use serde::{Deserialize, Serialize};
@@ -45,21 +44,22 @@ impl <S: serde::Serialize + Clone, D: serde::Serialize + Clone> Saver<S, D> {
         };
     }
 
-    pub fn append_checkpoint(&mut self, checkpoint: &S) {
+    pub fn append_checkpoint(&mut self, checkpoint: &S) -> anyhow::Result<()> {
         let e = LogEntry::<S, D>::Checkpoint(checkpoint.clone());
-        let as_json = serde_json::to_string(&e).expect("encoding checkpoint");
-        let mut sink = self.sink.lock().expect("rc::get_mut");
-        sink.write(as_json.as_bytes()).expect("writing checkpoint");
-        sink.write("\n".as_bytes()).expect("checkpoint newline");
-
+        let as_json = serde_json::to_string(&e)?;
+        let mut sink = self.sink.lock().expect("checkpoint::lock");
+        sink.write(as_json.as_bytes())?;
+        sink.write("\n".as_bytes())?;
+        return Ok(());
     }
 
-    pub fn append_delta(&mut self, delta: &D) {
+    pub fn append_delta(&mut self, delta: &D) -> anyhow::Result<()> {
         let e = LogEntry::<S, D>::Delta(delta.clone());
-        let as_json = serde_json::to_string(&e).expect("encoding delta");
-        let mut sink = self.sink.lock().expect("rc::get_mut");
-        sink.write(as_json.as_bytes()).expect("writing delta");
-        sink.write("\n".as_bytes()).expect("delta newline");
+        let as_json = serde_json::to_string(&e)?;
+        let mut sink = self.sink.lock().expect("delta::lock");
+        sink.write(as_json.as_bytes())?;
+        sink.write("\n".as_bytes())?;
+        return Ok(());
     }
 
 
@@ -73,12 +73,12 @@ pub struct PersistentStateMachine<S: serde::de::DeserializeOwned + serde::Serial
 impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::DeserializeOwned + serde::Serialize + Clone> PersistentStateMachine<S, D> {
     pub fn init(initial_state: S,
                 apply_fn: Box<dyn Fn(&mut S, &D)>,
-                mut saver: Saver<S, D>) -> PersistentStateMachine<S, D> {
-        saver.append_checkpoint(&initial_state);
-        return PersistentStateMachine{
+                mut saver: Saver<S, D>) -> anyhow::Result<PersistentStateMachine<S, D>> {
+        saver.append_checkpoint(&initial_state)?;
+        return Ok(PersistentStateMachine{
             machine: StateMachine::new(initial_state, apply_fn),
             saver: saver,
-        };
+        });
     }
 
     pub fn recover(lines: &mut dyn Iterator<Item=String>,
@@ -102,9 +102,10 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
         return state;
     }
 
-    pub fn apply(&mut self, delta: &D) {
-        self.saver.append_delta(delta);
+    pub fn apply(&mut self, delta: &D) -> anyhow::Result<()> {
         self.machine.apply(delta);
+        self.saver.append_delta(delta)?;
+        return Ok(());
     }
 
     pub fn state(&self) -> &S {
@@ -142,14 +143,14 @@ mod statemachine_tests {
             let mut psm = PersistentStateMachine::init(
                 Total{v: 0},
                 Box::new(apply_fn),
-                saver);
+                saver).expect("Valid PerisistentStateMachine");
 
             assert_eq!(0, psm.state().v, "Initial state check");
 
-            psm.apply(&Increment{i: 1});
+            psm.apply(&Increment{i: 1}).expect("apply 1");
             assert_eq!(1, psm.state().v, "+1 state check");
 
-            psm.apply(&Increment{i: 10});
+            psm.apply(&Increment{i: 10}).expect("apply 2");
             assert_eq!(11, psm.state().v, "+10 state check");
         }
 

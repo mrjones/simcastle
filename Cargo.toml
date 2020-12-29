@@ -15,6 +15,7 @@ path = "src/cmdline/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "*"
 itertools = "*"
 maplit = "*"
 rand = "*"

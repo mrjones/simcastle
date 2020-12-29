@@ -92,7 +92,7 @@ impl GameState {
                 },
                 Box::new(apply_mutation),
                 statemachine::Saver::new(std::rc::Rc::new(std::sync::Mutex::new(save_file))),
-            ),
+            ).expect("TODO"),
         };
     }
 
@@ -116,16 +116,16 @@ impl GameState {
             machine: statemachine::PersistentStateMachine::init(
                 state,
                 Box::new(apply_mutation),
-                statemachine::Saver::new(std::rc::Rc::new(std::sync::Mutex::new(save_file)))),
+                statemachine::Saver::new(std::rc::Rc::new(std::sync::Mutex::new(save_file)))).expect("TODO"),
         };
     }
 
-    pub fn execute_command(&mut self, command: &UserCommand) {
-        self.machine.apply(&MutationT::UserCommand{cmd: command.clone()});
+    pub fn execute_command(&mut self, command: &UserCommand) -> anyhow::Result<()> {
+        return self.machine.apply(&MutationT::UserCommand{cmd: command.clone()});
     }
 
     // TODO(mrjones): Make GameState immutable, and make this return a copy?
-    pub fn advance_turn(&mut self) -> Vec<Prompt> {
+    pub fn advance_turn(&mut self) -> anyhow::Result<Vec<Prompt>> {
         // TODO(mrjones): Starvation
         let food = std::cmp::min(
             self.machine.state().castle.food_infrastructure.food_storage,
@@ -133,15 +133,15 @@ impl GameState {
 
         // TODO: Need to decide what explicitly gets written down, and what gets
         // recomputed by the execute_mutation framework...
-        self.machine.apply(&MutationT::SetFood{v: food});
-        self.machine.apply(&MutationT::EndTurn);
+        self.machine.apply(&MutationT::SetFood{v: food})?;
+        self.machine.apply(&MutationT::EndTurn)?;
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {
             prompts.push(Prompt::AsylumSeeker(
                 self.character_gen.new_character()));
         }
-        return prompts;
+        return Ok(prompts);
     }
 
     pub fn food_economy(&self) -> economy::FoodEconomy {
