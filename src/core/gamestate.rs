@@ -17,6 +17,10 @@ pub struct GameSpec {
 pub struct GameStateT {
     pub turn: i32,
     pub food: types::Millis,
+
+    pub population: population::Population,
+    pub workforce: workforce::Workforce,
+    pub castle: castle::Castle,
 }
 
 enum MutationT {
@@ -38,29 +42,7 @@ fn apply_command(state: &mut GameStateT, c: &Command) {
 }
 
 struct GameStateMachine {
-    workforce: workforce::Workforce,
-    population: population::Population,
-    castle: castle::Castle,
-    character_gen: character::CharacterFactory,
-}
 
-impl GameStateMachine {
-    fn execute_command(&mut self, command: &Command) {
-        match command {
-            Command::AssignToTeam{cid, job} => {
-                self.workforce.assign(*cid, *job);
-            },
-            Command::AddCharacter{character} => {
-                let cid = character.id();
-                self.population.add(character.clone());
-                self.workforce.add_unassigned(cid);
-            },
-        }
-    }
-
-    fn execute_mutation(&mut self, mutation: &InternalMutation) {
-        unimplemented!();
-    }
 }
 
 pub enum Prompt {
@@ -68,12 +50,13 @@ pub enum Prompt {
 }
 
 pub struct GameState {
-    machine: GameStateMachine,
-    machine2: statemachine::StateMachine<GameStateT, MutationT>,
+    machine: statemachine::StateMachine<GameStateT, MutationT>,
+
+    character_gen: character::CharacterFactory,
 }
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Command {
     AssignToTeam{cid: character::CharacterId, job: workforce::Job},
     AddCharacter{character: character::Character}
@@ -90,53 +73,51 @@ impl GameState {
                    "Please pick {} initial characters ({} selected)",
                    spec.initial_characters, initial_characters.len());
         return GameState{
-            machine: GameStateMachine{
-                workforce: workforce::Workforce::new(
-                    initial_characters.iter().map(character::Character::id).collect()),
-                population: population::Population::new(initial_characters),
-                castle: castle::Castle::init(&spec),
-                character_gen: character_gen,
-            },
-            machine2: statemachine::StateMachine::new(
+            character_gen: character_gen,
+            machine: statemachine::StateMachine::new(
                 GameStateT{
                     turn: 0,
                     food: types::Millis::from_i32(2 * spec.initial_characters as i32),
+                    workforce: workforce::Workforce::new(
+                        initial_characters.iter().map(character::Character::id).collect()),
+                    population: population::Population::new(initial_characters),
+                    castle: castle::Castle::init(&spec),
                 }, Box::new(apply_mutation)),
         };
     }
 
     pub fn execute_command(&mut self, command: &Command) {
-        self.machine.execute_command(command);
+        self.machine.apply(&MutationT::UserCommand(command.clone()));
     }
 
     // TODO(mrjones): Make GameState immutable, and make this return a copy?
     pub fn advance_turn(&mut self) -> Vec<Prompt> {
         // TODO(mrjones): Starvation
         let food = std::cmp::min(
-            self.machine.castle.food_infrastructure.food_storage,
-            self.machine2.state().food + self.food_delta());
+            self.machine.state().castle.food_infrastructure.food_storage,
+            self.machine.state().food + self.food_delta());
 
-        self.machine2.apply(&MutationT::SetFood{v: food});
-        self.machine.workforce.advance_turn();
+        self.machine.apply(&MutationT::SetFood{v: food});
+        self.machine.unsafe_mutable_state().workforce.advance_turn();
 
-        for (c1, c2) in self.machine.workforce.farmers().member_pairs() {
-            self.machine.population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
+        for (c1, c2) in self.machine.state().workforce.farmers().member_pairs() {
+            self.machine.unsafe_mutable_state().population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
         }
 
         // TODO: Need to decide what explicitly gets written down, and what gets
         // recomputed by the execute_mutation framework...
-        self.machine2.apply(&MutationT::IncrementTurn);
+        self.machine.apply(&MutationT::IncrementTurn);
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {
             prompts.push(Prompt::AsylumSeeker(
-                self.machine.character_gen.new_character()));
+                self.character_gen.new_character()));
         }
         return prompts;
     }
 
     pub fn food_economy(&self) -> economy::FoodEconomy {
-        return economy::food(self.machine.workforce.farmers(), &self.machine.castle.food_infrastructure, &self.machine.population);
+        return economy::food(self.machine.state().workforce.farmers(), &self.machine.state().castle.food_infrastructure, &self.machine.state().population);
     }
 
     pub fn food_delta(&self) -> types::Millis {
@@ -145,23 +126,23 @@ impl GameState {
     }
 
     pub fn population(&self) -> &population::Population {
-        return &self.machine.population;
+        return &self.machine.state().population;
     }
 
     pub fn workforce(&self) -> &workforce::Workforce {
-        return &self.machine.workforce;
+        return &self.machine.state().workforce;
     }
 
     pub fn castle(&self) -> &castle::Castle {
-        return &self.machine.castle;
+        return &self.machine.state().castle;
     }
 
     pub fn turn(&self) -> i32 {
-        return self.machine2.state().turn;
+        return self.machine.state().turn;
     }
 
     pub fn food(&self) -> types::Millis {
-        return self.machine2.state().food;
+        return self.machine.state().food;
     }
 
 }
