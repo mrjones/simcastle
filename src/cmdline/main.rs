@@ -33,7 +33,7 @@ fn begin_game() -> simcastle_core::gamestate::GameState {
     }
 
     let save_file = std::fs::File::create("/tmp/simcastle.save").expect("creating save file");
-    return setup.begin(team, save_file);
+    return setup.begin(team, save_file).expect("TODO");
 }
 
 fn restore_game() -> simcastle_core::gamestate::GameState {
@@ -43,7 +43,6 @@ fn restore_game() -> simcastle_core::gamestate::GameState {
 }
 
 fn main() {
-
     let mut game: simcastle_core::gamestate::GameState = if prompt_restore() {
         restore_game()
     } else {

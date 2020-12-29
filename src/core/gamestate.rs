@@ -75,11 +75,11 @@ impl GameState {
     pub fn init(spec: GameSpec,
                 initial_characters: Vec<character::Character>,
                 character_gen: character::CharacterFactory,
-                save_file: std::fs::File) -> GameState {
+                save_file: std::fs::File) -> anyhow::Result<GameState> {
         assert_eq!(initial_characters.len(), spec.initial_characters as usize,
                    "Please pick {} initial characters ({} selected)",
                    spec.initial_characters, initial_characters.len());
-        return GameState{
+        return Ok(GameState{
             character_gen: character_gen,
             machine: statemachine::PersistentStateMachine::init(
                 GameStateT{
@@ -92,8 +92,8 @@ impl GameState {
                 },
                 Box::new(apply_mutation),
                 statemachine::Saver::new(std::rc::Rc::new(std::sync::Mutex::new(save_file))),
-            ).expect("TODO"),
-        };
+            )?,
+        });
     }
 
     fn restore_helper<P: AsRef<std::path::Path>>(filename: &P) -> anyhow::Result<GameStateT> {
