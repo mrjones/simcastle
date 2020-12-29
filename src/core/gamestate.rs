@@ -103,7 +103,7 @@ impl GameState {
         let restore_reader = std::io::BufReader::new(restore_file);
         return statemachine::PersistentStateMachine::recover(
             &mut restore_reader.lines().map(|r| r.unwrap()),
-            &apply_mutation);
+            &apply_mutation).expect("TODO");
     }
 
     pub fn restore<P: AsRef<std::path::Path>>(filename: P,

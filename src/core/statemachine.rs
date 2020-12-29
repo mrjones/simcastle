@@ -82,24 +82,28 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
     }
 
     pub fn recover(lines: &mut dyn Iterator<Item=String>,
-                   apply_fn: &dyn Fn(&mut S, &D)) -> S {
-        let head = lines.next().expect("recover: no head");
-        let initial_entry: LogEntry<S, D> = serde_json::from_str(&head).expect("recover: couldn't parse initial CP");
+                   apply_fn: &dyn Fn(&mut S, &D)) -> anyhow::Result<S> {
+        use anyhow::Context;
+
+        let head = lines.next();
+        let initial_entry: LogEntry<S, D> = serde_json::from_str(
+            &head.ok_or(anyhow::Error::msg("PSM::Recover: couldn't parse initial CP"))?)?;
 
         let mut state = match initial_entry {
             LogEntry::Checkpoint(cp) => cp,
-            LogEntry::Delta(_) => panic!("log started with delta"),
+            LogEntry::Delta(_) => return Err(anyhow::Error::msg("log started with delta")),
         };
 
         for entry in lines {
-            let entry_struct: LogEntry<S, D> = serde_json::from_str(&entry).expect("recover: couldn't parse additional line");
+            let entry_struct: LogEntry<S, D> = serde_json::from_str(&entry)
+                .with_context(|| format!("PSM::Recover: couldn't parse line"))?;
             match entry_struct {
                 LogEntry::Checkpoint(cp) => state = cp,
                 LogEntry::Delta(d) => (*apply_fn)(&mut state, &d),
             }
         }
 
-        return state;
+        return Ok(state);
     }
 
     pub fn apply(&mut self, delta: &D) -> anyhow::Result<()> {
@@ -157,7 +161,8 @@ mod statemachine_tests {
         use std::io::BufRead;
 
         let state = PersistentStateMachine::recover(
-            &mut logfile.lock().unwrap().lines().map(|res| res.unwrap()), &apply_fn);
+            &mut logfile.lock().unwrap().lines().map(|res| res.unwrap()), &apply_fn)
+            .expect("recover");
         assert_eq!(11, state.v);
     }
 }
