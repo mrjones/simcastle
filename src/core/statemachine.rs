@@ -47,19 +47,19 @@ impl <S: serde::Serialize + Clone, D: serde::Serialize + Clone> Saver<S, D> {
 
     pub fn append_checkpoint(&mut self, checkpoint: &S) {
         let e = LogEntry::<S, D>::Checkpoint(checkpoint.clone());
-        let as_json = serde_json::to_string(&e).expect("XXX");
+        let as_json = serde_json::to_string(&e).expect("encoding checkpoint");
         let mut sink = self.sink.lock().expect("rc::get_mut");
-        sink.write(as_json.as_bytes()).expect("xxx");
-        sink.write("\n".as_bytes()).expect("xxx");
+        sink.write(as_json.as_bytes()).expect("writing checkpoint");
+        sink.write("\n".as_bytes()).expect("checkpoint newline");
 
     }
 
     pub fn append_delta(&mut self, delta: &D) {
         let e = LogEntry::<S, D>::Delta(delta.clone());
-        let as_json = serde_json::to_string(&e).expect("XXX");
+        let as_json = serde_json::to_string(&e).expect("encoding delta");
         let mut sink = self.sink.lock().expect("rc::get_mut");
-        sink.write(as_json.as_bytes()).expect("xxx");
-        sink.write("\n".as_bytes()).expect("xxx");
+        sink.write(as_json.as_bytes()).expect("writing delta");
+        sink.write("\n".as_bytes()).expect("delta newline");
     }
 
 

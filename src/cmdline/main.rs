@@ -1,6 +1,16 @@
 use simcastle_core;
 
-fn main() {
+fn prompt_restore() -> bool {
+    loop {
+        let user_input = get_input_line("(n)ew or (r)estore? ");
+        if user_input.len() == 0 { continue }
+
+        if user_input[0] == "r" { return true; }
+        if user_input[0] == "n" { return false; }
+    }
+}
+
+fn begin_game() -> simcastle_core::gamestate::GameState {
     let spec = simcastle_core::gamestate::GameSpec{
         initial_potential_characters: 6,
         initial_characters: 3,
@@ -22,9 +32,23 @@ fn main() {
         }
     }
 
-    let save_file = std::fs::File::open("/tmp/simcastle.save").expect("save file");
-    let mut game = setup.begin(team, save_file);
+    let save_file = std::fs::File::create("/tmp/simcastle.save").expect("creating save file");
+    return setup.begin(team, save_file);
+}
 
+fn restore_game() -> simcastle_core::gamestate::GameState {
+    return simcastle_core::gamestate::GameState::restore(
+        "/tmp/simcastle.save",
+        simcastle_core::character::CharacterFactory::new());
+}
+
+fn main() {
+
+    let mut game: simcastle_core::gamestate::GameState = if prompt_restore() {
+        restore_game()
+    } else {
+        begin_game()
+    };
     print_workforce(&game);
     print_state(&game);
 
