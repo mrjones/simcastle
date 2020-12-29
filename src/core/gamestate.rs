@@ -23,26 +23,31 @@ pub struct GameStateT {
     pub castle: castle::Castle,
 }
 
+#[derive(Debug, Clone)]
+pub enum UserCommand {
+    AssignToTeam{cid: character::CharacterId, job: workforce::Job},
+    AddCharacter{character: character::Character}
+}
+
 enum MutationT {
     IncrementTurn,
     SetFood{v: types::Millis},
-    UserCommand(Command),
+    UserCommand{cmd: UserCommand},
 }
 
 fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
     match &m {
         &MutationT::IncrementTurn => state.turn = state.turn + 1,
         &MutationT::SetFood{v} => state.food = *v,
-        &MutationT::UserCommand(cmd) => apply_command(state, cmd),
+        &MutationT::UserCommand{cmd} => apply_user_command(state, cmd),
     }
 }
 
-fn apply_command(state: &mut GameStateT, c: &Command) {
-    unimplemented!();
-}
-
-struct GameStateMachine {
-
+fn apply_user_command(state: &mut GameStateT, c: &UserCommand) {
+    match &c {
+        &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(*cid, *job),
+        &UserCommand::AddCharacter{character} => state.population.add(character.clone()),
+    }
 }
 
 pub enum Prompt {
@@ -51,21 +56,9 @@ pub enum Prompt {
 
 pub struct GameState {
     machine: statemachine::StateMachine<GameStateT, MutationT>,
-
     character_gen: character::CharacterFactory,
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum Command {
-    AssignToTeam{cid: character::CharacterId, job: workforce::Job},
-    AddCharacter{character: character::Character}
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum InternalMutation {
-    AdvanceTurn{turn: i32},
-}
 
 impl GameState {
     pub fn init(spec: GameSpec, initial_characters: Vec<character::Character>, character_gen: character::CharacterFactory) -> GameState {
@@ -86,8 +79,8 @@ impl GameState {
         };
     }
 
-    pub fn execute_command(&mut self, command: &Command) {
-        self.machine.apply(&MutationT::UserCommand(command.clone()));
+    pub fn execute_command(&mut self, command: &UserCommand) {
+        self.machine.apply(&MutationT::UserCommand{cmd: command.clone()});
     }
 
     // TODO(mrjones): Make GameState immutable, and make this return a copy?

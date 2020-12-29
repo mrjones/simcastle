@@ -71,7 +71,7 @@ fn handle_prompts(state: &mut simcastle_core::gamestate::GameState, prompts: Vec
                         match input_array[0].chars().next() {
                             Some('y') => {
                                 state.execute_command(
-                                    &simcastle_core::gamestate::Command::AddCharacter{
+                                    &simcastle_core::gamestate::UserCommand::AddCharacter{
                                         character: c.clone(),
                                     });
                                 break;
@@ -102,7 +102,7 @@ fn set_assignment(args: &Vec<String>, game: &mut simcastle_core::gamestate::Game
     char_id.map(|char_id| { job.map(|job| {
         println!("Making character {} into a {:?}", char_id, job);
 //        game.mut_workforce().assign(char_id, job);
-        game.execute_command(&simcastle_core::gamestate::Command::AssignToTeam{cid: char_id, job: job});
+        game.execute_command(&simcastle_core::gamestate::UserCommand::AssignToTeam{cid: char_id, job: job});
     })});
 }
 
