@@ -148,7 +148,7 @@ fn cotenure_exp(team: &team::Team, rapport_tracker: &population::RapportTracker)
 
     return TaggedExp{
         e: Exp::Constant{v: v},  // TODO: Could expand this more?
-        tag: "cotenure".to_string(),
+        tag: "team average cotenure".to_string(),
     };
 }
 
@@ -172,8 +172,6 @@ fn food_production(team: &team::Team,
         tag: "production".to_string(),
     }
 }
-
-
 
 #[cfg(test)]
 mod exp_tests {
@@ -207,9 +205,6 @@ mod exp_tests {
 pub struct FoodEconomy {
     pub production: TaggedExp,
     pub consumed_per_turn: types::Millis,
-
-    pub num_farmers: f32,
-    pub acres_of_farmland: f32,
 }
 
 pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructure, population: &population::Population) -> FoodEconomy {
@@ -218,8 +213,5 @@ pub fn food(farmers: &team::Team, food_infrastructure: &castle::FoodInfrastructu
         // 1.0 per person.. for now
         consumed_per_turn: types::Millis::from_i32(
             population.characters().len() as i32),
-
-        num_farmers: farmers.members().len() as f32,
-        acres_of_farmland: food_infrastructure.acres_of_farmland as f32,
     };
 }
