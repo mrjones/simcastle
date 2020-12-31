@@ -23,6 +23,8 @@ pub struct GameStateT {
     pub population: population::Population,
     pub workforce: workforce::Workforce,
     pub castle: castle::Castle,
+
+    pub next_valid_cid: character::CharacterId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -56,6 +58,9 @@ fn apply_user_command(state: &mut GameStateT, c: &UserCommand) {
     match &c {
         &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(cid.clone(), job.clone()),
         &UserCommand::AddCharacter{character} => {
+            if character.id().0 >= state.next_valid_cid.0 {
+                state.next_valid_cid = character::CharacterId(character.id().0 + 1);
+            }
             state.population.add(character.clone());
             state.workforce.add_unassigned(character.id());
         },
@@ -69,25 +74,26 @@ pub enum Prompt {
 pub struct GameState {
 //    save_file: &'svf mut std::fs::File,
     machine: statemachine::PersistentStateMachine<GameStateT, MutationT>,
-    character_gen: character::CharacterFactory,
 }
 
 impl GameState {
     pub fn init(spec: GameSpec,
                 initial_characters: Vec<character::Character>,
-                character_gen: character::CharacterFactory,
                 save_file: std::fs::File) -> anyhow::Result<GameState> {
         assert_eq!(initial_characters.len(), spec.initial_characters as usize,
                    "Please pick {} initial characters ({} selected)",
                    spec.initial_characters, initial_characters.len());
+
         return Ok(GameState{
-            character_gen: character_gen,
             machine: statemachine::PersistentStateMachine::init(
                 GameStateT{
                     turn: 0,
                     food: types::Millis::from_i32(2 * spec.initial_characters as i32),
                     workforce: workforce::Workforce::new(
                         initial_characters.iter().map(character::Character::id).collect()),
+                    next_valid_cid: initial_characters.iter().fold(
+                        character::CharacterId(0),
+                        |so_far, candidate| character::CharacterId(std::cmp::max(so_far.0, candidate.id().0 + 1))),
                     population: population::Population::new(initial_characters),
                     castle: castle::Castle::init(&spec),
                 },
@@ -108,14 +114,12 @@ impl GameState {
             &apply_mutation)?);
     }
 
-    pub fn restore<P: AsRef<std::path::Path> + std::fmt::Debug>(filename: P,
-                                                                character_gen: character::CharacterFactory) -> anyhow::Result<GameState> {
+    pub fn restore<P: AsRef<std::path::Path> + std::fmt::Debug>(filename: P) -> anyhow::Result<GameState> {
         let state = GameState::restore_helper(&filename)?;
         let save_file = std::fs::OpenOptions::new().write(true).append(true).open(&filename)
             .with_context(|| format!("Opening {:?} for as save_file", &filename))?;
 
         return Ok(GameState{
-            character_gen: character_gen,
             machine: statemachine::PersistentStateMachine::init(
                 state,
                 Box::new(apply_mutation),
@@ -141,8 +145,8 @@ impl GameState {
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {
-            prompts.push(Prompt::AsylumSeeker(
-                self.character_gen.new_character()));
+            prompts.push(Prompt::AsylumSeeker(character::Character::new_random(
+                self.machine.state().next_valid_cid)));
         }
         return Ok(prompts);
     }

@@ -17,7 +17,7 @@ pub struct TraitInfo {
     pub string3: String,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct CharacterId(pub i64);
 
 impl std::fmt::Display for CharacterId {
@@ -42,23 +42,6 @@ pub fn all_trait_infos() -> std::collections::HashMap<Trait, TraitInfo> {
             string3: "WOR".to_string(),
         }
     };
-}
-
-pub struct CharacterFactory {
-    next_id: std::sync::atomic::AtomicI64,
-}
-
-impl CharacterFactory {
-    pub fn new() -> CharacterFactory {
-        return CharacterFactory{
-            next_id: std::sync::atomic::AtomicI64::new(0),
-        }
-    }
-
-    pub fn new_character(&self) -> Character {
-        let id = self.next_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        return Character::new_random(CharacterId(id));
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
