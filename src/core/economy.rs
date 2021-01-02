@@ -103,7 +103,7 @@ fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>
         for (t, weight) in weights {
             character_skills.push(TaggedExp{
                 e: Exp::Constant{v: weight * (c.get_trait(*t) as f32 - 50.0) / 10.0},
-                tag: character::all_trait_infos().get(t).expect("unknown trait").string3.clone(),
+                tag: t.string3().to_string(),
             });
         }
         character_exps.push(TaggedExp{

@@ -13,8 +13,14 @@ pub enum Trait {
     WorkEthic,
 }
 
-pub struct TraitInfo {
-    pub string3: String,
+impl Trait {
+    pub fn string3(&self) -> &str {
+        match self {
+            Trait::Intelligence => "INT",
+            Trait::Strength => "STR",
+            Trait::WorkEthic => "WOR",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
@@ -28,20 +34,6 @@ impl std::fmt::Display for CharacterId {
 
 pub fn all_traits() -> Vec<Trait> {
     return vec![Trait::Intelligence, Trait::Strength, Trait::WorkEthic];
-}
-
-pub fn all_trait_infos() -> std::collections::HashMap<Trait, TraitInfo> {
-    return maplit::hashmap!{
-        Trait::Intelligence => TraitInfo{
-            string3: "INT".to_string(),
-        },
-        Trait::Strength => TraitInfo{
-            string3: "STR".to_string(),
-        },
-        Trait::WorkEthic => TraitInfo{
-            string3: "WOR".to_string(),
-        }
-    };
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -77,8 +69,7 @@ impl Character {
     }
 
     pub fn full_debug_string(&self) -> String {
-        let trait_infos = all_trait_infos();
-        let traits_str = all_traits().iter().map(|t| format!("{}:{}", trait_infos.get(t).unwrap().string3, self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
+        let traits_str = all_traits().iter().map(|t| format!("{}:{}", t.string3(), self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
         return format!("[{:03}|{:10}] {}", self.id.0, self.name, traits_str);
     }
 }
