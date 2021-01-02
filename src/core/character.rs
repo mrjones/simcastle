@@ -5,8 +5,10 @@ extern crate std;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Deserialize, Serialize, EnumIter)]
 pub enum Trait {
     Intelligence,
     Strength,
@@ -30,10 +32,6 @@ impl std::fmt::Display for CharacterId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
-}
-
-pub fn all_traits() -> Vec<Trait> {
-    return vec![Trait::Intelligence, Trait::Strength, Trait::WorkEthic];
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -69,7 +67,7 @@ impl Character {
     }
 
     pub fn full_debug_string(&self) -> String {
-        let traits_str = all_traits().iter().map(|t| format!("{}:{}", t.string3(), self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
+        let traits_str = Trait::iter().map(|t| format!("{}:{}", t.string3(), self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
         return format!("[{:03}|{:10}] {}", self.id.0, self.name, traits_str);
     }
 }
@@ -81,7 +79,7 @@ fn random_stat() -> i32 {
 
 fn random_traits() -> std::collections::HashMap<Trait, i32> {
     let mut map: std::collections::HashMap<Trait, i32> = std::collections::HashMap::new();
-    for t in all_traits() {
+    for t in Trait::iter() {
         map.insert(t.clone(), random_stat());
     }
     return map;
