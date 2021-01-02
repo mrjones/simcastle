@@ -102,7 +102,7 @@ fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>
         let mut character_skills = vec![base_production.clone()];
         for (t, weight) in weights {
             character_skills.push(TaggedExp{
-                e: Exp::Constant{v: weight * (c.get_trait(*t) as f32 - 50.0) / 10.0},
+                e: Exp::Constant{v: weight * (c.get_trait_value(*t) as f32 - 50.0) / 10.0},
                 tag: t.string3().to_string(),
             });
         }

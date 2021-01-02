@@ -35,10 +35,15 @@ impl std::fmt::Display for CharacterId {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TraitRating {
+    pub value: i32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Character {
     id: CharacterId,
     name: String,
-    traits: std::collections::HashMap<Trait, i32>,
+    traits: std::collections::HashMap<Trait, TraitRating>,
 }
 
 impl Character {
@@ -58,27 +63,23 @@ impl Character {
         return &self.name;
     }
 
-    pub fn get_trait(&self, t: Trait) -> i32 {
-        return self.traits.get(&t).expect("unexpected character trait").clone();
-    }
-
-    pub fn set_trait(&mut self, t: Trait, v: i32) {
-        self.traits.insert(t, v).expect("updated missing trait");
+    pub fn get_trait_value(&self, t: Trait) -> i32 {
+        return self.traits.get(&t).expect("unexpected character trait").value;
     }
 
     pub fn full_debug_string(&self) -> String {
-        let traits_str = Trait::iter().map(|t| format!("{}:{}", t.string3(), self.get_trait(t.clone()))).collect::<Vec<String>>().join(" ");
+        let traits_str = Trait::iter().map(|t| format!("{}:{}", t.string3(), self.get_trait_value(t))).collect::<Vec<String>>().join(" ");
         return format!("[{:03}|{:10}] {}", self.id.0, self.name, traits_str);
     }
 }
 
-fn random_stat() -> i32 {
+fn random_stat() -> TraitRating {
     let x: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
-    return 50 + (10.0 * x) as i32;
+    return TraitRating{value: 50 + (10.0 * x) as i32};
 }
 
-fn random_traits() -> std::collections::HashMap<Trait, i32> {
-    let mut map: std::collections::HashMap<Trait, i32> = std::collections::HashMap::new();
+fn random_traits() -> std::collections::HashMap<Trait, TraitRating> {
+    let mut map: std::collections::HashMap<Trait, TraitRating> = std::collections::HashMap::new();
     for t in Trait::iter() {
         map.insert(t.clone(), random_stat());
     }
