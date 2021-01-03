@@ -16,7 +16,7 @@ path = "src/cmdline/main.rs"
 
 [dependencies]
 anyhow = "*"
-env_logger = "*"
+fern = "*"
 itertools = "*"
 log = "*"
 maplit = "*"

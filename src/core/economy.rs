@@ -148,7 +148,7 @@ fn cotenure_exp(team: &team::Team, rapport_tracker: &population::RapportTracker)
 
     return TaggedExp{
         e: Exp::Constant{v: v},  // TODO: Could expand this more?
-        tag: "team average cotenure".to_string(),
+        tag: format!("team average cotenure ({} turns)", average_cotenure),
     };
 }
 

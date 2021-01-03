@@ -75,7 +75,6 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
     pub fn init(initial_state: S,
                 apply_fn: Box<dyn Fn(&mut S, &D) -> anyhow::Result<()>>,
                 mut saver: Saver<S, D>) -> anyhow::Result<PersistentStateMachine<S, D>> {
-        info!("Beginning new game.");
         saver.append_checkpoint(&initial_state)?;
         return Ok(PersistentStateMachine{
             machine: StateMachine::new(initial_state, apply_fn),
@@ -86,7 +85,7 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
     pub fn recover(lines: &mut dyn Iterator<Item=String>,
                    apply_fn: &dyn Fn(&mut S, &D) -> anyhow::Result<()>) -> anyhow::Result<S> {
         use anyhow::Context;
-        info!("Recovering...");
+        debug!("Recovering...");
 
         let head = lines.next();
         let initial_entry: LogEntry<S, D> = serde_json::from_str(
@@ -105,6 +104,7 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
                 LogEntry::Delta(d) => (*apply_fn)(&mut state, &d)?,
             }
         }
+        debug!("... done.");
 
         return Ok(state);
     }

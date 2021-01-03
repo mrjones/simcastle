@@ -41,8 +41,29 @@ fn restore_game() -> simcastle_core::gamestate::GameState {
         "/tmp/simcastle.save").expect("TODO");
 }
 
+fn log_level_as_letter(level: log::Level) -> String {
+    match level {
+        log::Level::Debug => "D".to_string(),
+        log::Level::Error => "E".to_string(),
+        log::Level::Info => "I".to_string(),
+        log::Level::Trace => "T".to_string(),
+        log::Level::Warn => "W".to_string(),
+    }
+}
+
 fn main() {
-    env_logger::init();
+    fern::Dispatch::new()
+        .format(|out, msg, record| {
+            out.finish(format_args!("{} [{}:{:<3}] {}",
+                                    log_level_as_letter(record.level()),
+                                    record.file().unwrap_or("-"),
+                                    record.line().unwrap_or(0),
+                                    msg));
+        })
+        .level(log::LevelFilter::Debug)
+        .chain(std::io::stdout())
+        .apply()
+        .expect("Setting up logging.");
 
     let mut game: simcastle_core::gamestate::GameState = if prompt_restore() {
         restore_game()
