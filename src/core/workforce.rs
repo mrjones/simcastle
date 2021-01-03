@@ -1,6 +1,7 @@
 use super::character;
 use super::team;
 
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -31,14 +32,18 @@ impl Workforce {
         self.unassigned.add(&char_id);
     }
 
-    pub fn assign(&mut self, char_id: character::CharacterId, job: Job) {
-        assert!(self.unassigned.contains(&char_id),
-                "{} wasn't in {:?}", char_id, self.unassigned.members());
+    pub fn assign(&mut self, char_id: character::CharacterId, job: Job) -> anyhow::Result<()> {
+        if !self.unassigned.contains(&char_id) {
+            return Err(anyhow!("{} wasn't in {:?}", char_id, self.unassigned.members()));
+        }
+
         self.unassigned.remove(&char_id);
 
         match job {
             Job::FARMER => self.farmers.add(&char_id),
         }
+
+        return Ok(());
     }
 
     pub fn farmers(&self) -> &team::Team {

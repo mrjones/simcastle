@@ -41,7 +41,7 @@ enum MutationT {
     UpdateCharacter{character_delta: character::CharacterDelta},
 }
 
-fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
+fn apply_mutation(state: &mut GameStateT, m: &MutationT) -> anyhow::Result<()> {
     match &m {
         &MutationT::EndTurn => {
             state.turn = state.turn + 1;
@@ -51,7 +51,7 @@ fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
             }
         }
         &MutationT::SetFood{v} => state.food = *v,
-        &MutationT::UserCommand{cmd} => apply_user_command(state, cmd),
+        &MutationT::UserCommand{cmd} => apply_user_command(state, cmd)?,
         &MutationT::UpdateCharacter{character_delta} => {
             let character = state.population.mut_character_with_id(character_delta.id)
                 .expect(&format!("no character with id {}", character_delta.id));
@@ -60,11 +60,13 @@ fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
             }
         }
     }
+
+    return Ok(());
 }
 
-fn apply_user_command(state: &mut GameStateT, c: &UserCommand) {
+fn apply_user_command(state: &mut GameStateT, c: &UserCommand) -> anyhow::Result<()> {
     match &c {
-        &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(cid.clone(), job.clone()),
+        &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(cid.clone(), job.clone())?,
         &UserCommand::AddCharacter{character} => {
             if character.id().0 >= state.next_valid_cid.0 {
                 state.next_valid_cid = character::CharacterId(character.id().0 + 1);
@@ -73,6 +75,8 @@ fn apply_user_command(state: &mut GameStateT, c: &UserCommand) {
             state.workforce.add_unassigned(character.id());
         },
     }
+
+    return Ok(());
 }
 
 pub enum Prompt {

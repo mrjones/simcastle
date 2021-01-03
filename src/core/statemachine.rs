@@ -5,16 +5,16 @@ use serde::{Deserialize, Serialize};
 
 pub struct StateMachine<S, D> {
     state: S,
-    apply_fn: Box<dyn Fn(&mut S, &D)>,
+    apply_fn: Box<dyn Fn(&mut S, &D) -> anyhow::Result<()>>,
 }
 
 impl <S, D> StateMachine<S, D> {
-    pub fn new(initial_state: S, apply_fn: Box<dyn Fn(&mut S, &D)>) -> StateMachine<S, D> {
+    pub fn new(initial_state: S, apply_fn: Box<dyn Fn(&mut S, &D) -> anyhow::Result<()>>) -> StateMachine<S, D> {
         return StateMachine{state: initial_state, apply_fn: apply_fn};
     }
 
-    pub fn apply(&mut self, delta: &D) {
-        (*self.apply_fn)(&mut self.state, delta);
+    pub fn apply(&mut self, delta: &D) -> anyhow::Result<()> {
+        return (*self.apply_fn)(&mut self.state, delta);
     }
 
     pub fn state(&self) -> &S {
@@ -72,7 +72,7 @@ pub struct PersistentStateMachine<S: serde::de::DeserializeOwned + serde::Serial
 
 impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::DeserializeOwned + serde::Serialize + Clone> PersistentStateMachine<S, D> {
     pub fn init(initial_state: S,
-                apply_fn: Box<dyn Fn(&mut S, &D)>,
+                apply_fn: Box<dyn Fn(&mut S, &D) -> anyhow::Result<()>>,
                 mut saver: Saver<S, D>) -> anyhow::Result<PersistentStateMachine<S, D>> {
         saver.append_checkpoint(&initial_state)?;
         return Ok(PersistentStateMachine{
@@ -82,7 +82,7 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
     }
 
     pub fn recover(lines: &mut dyn Iterator<Item=String>,
-                   apply_fn: &dyn Fn(&mut S, &D)) -> anyhow::Result<S> {
+                   apply_fn: &dyn Fn(&mut S, &D) -> anyhow::Result<()>) -> anyhow::Result<S> {
         use anyhow::Context;
 
         let head = lines.next();
@@ -99,7 +99,7 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
                 .with_context(|| format!("PSM::Recover: couldn't parse line"))?;
             match entry_struct {
                 LogEntry::Checkpoint(cp) => state = cp,
-                LogEntry::Delta(d) => (*apply_fn)(&mut state, &d),
+                LogEntry::Delta(d) => (*apply_fn)(&mut state, &d)?,
             }
         }
 
@@ -107,7 +107,7 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
     }
 
     pub fn apply(&mut self, delta: &D) -> anyhow::Result<()> {
-        self.machine.apply(delta);
+        self.machine.apply(delta)?;
         self.saver.append_delta(delta)?;
         return Ok(());
     }
