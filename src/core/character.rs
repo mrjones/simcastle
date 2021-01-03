@@ -124,14 +124,14 @@ impl Character {
 
 fn random_stat() -> TraitRating {
     let cap_z_score: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
-    let growth_z_score: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
+    let headroom_z_score: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
 
-    let capacity = 50 + (10.0 * cap_z_score) as i32;
-    let growth = 10 + (10.0 * growth_z_score) as i32;
+    let capacity = 55 + (10.0 * cap_z_score) as i32;
+    let headroom = 10 + (5.0 * headroom_z_score) as i32;
 
     return TraitRating{
         capacity: capacity,
-        value: std::cmp::max(0, std::cmp::min(capacity, capacity - growth)),
+        value: std::cmp::max(0, std::cmp::min(capacity, capacity - headroom)),
     };
 }
 
