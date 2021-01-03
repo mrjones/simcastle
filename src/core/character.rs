@@ -109,7 +109,7 @@ impl Character {
                 }
             }
             if inc > 0 {
-                println!("Trait change: cid={} trait={} delta={}", self.id, t.string3(), inc);
+                println!("Trait change: cid={} trait={} delta={} v={}", self.id, t.string3(), inc, current.value + inc);
                 deltas.insert(*t, current.value + inc);
             }
         }
