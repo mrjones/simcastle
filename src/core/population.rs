@@ -26,9 +26,14 @@ impl Population {
         return self.characters.iter().find(|c| c.id() == id);
     }
 
+    pub fn mut_character_with_id(&mut self, cid: character::CharacterId) -> Option<&mut character::Character> {
+        return self.characters.iter_mut().find(|c| c.id() == cid);
+    }
+
     pub fn add(&mut self, c: character::Character) {
         self.characters.push(c);
     }
+
 
     pub fn rapport_tracker(&self) -> &RapportTracker {
         return &self.rapport_tracker;
@@ -36,6 +41,10 @@ impl Population {
 
     pub fn mut_rapport_tracker(&mut self) -> &mut RapportTracker {
         return &mut self.rapport_tracker;
+    }
+
+    pub fn compute_end_of_turn_deltas(&self) -> Vec<character::CharacterDelta> {
+        return self.characters.iter().filter_map(|c| c.compute_end_of_turn_delta()).collect();
     }
 }
 

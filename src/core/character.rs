@@ -35,8 +35,10 @@ impl std::fmt::Display for CharacterId {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+// Ratings in [0,100], 50 is average, 10 / stddev.
 pub struct TraitRating {
     pub value: i32,
+    pub capacity: i32,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -44,6 +46,12 @@ pub struct Character {
     id: CharacterId,
     name: String,
     traits: std::collections::HashMap<Trait, TraitRating>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CharacterDelta {
+    pub id: CharacterId,
+    pub changed_trait_values: std::collections::HashMap<Trait, i32>,
 }
 
 impl Character {
@@ -67,15 +75,64 @@ impl Character {
         return self.traits.get(&t).expect("unexpected character trait").value;
     }
 
+    pub fn get_trait_desc(&self, t: Trait) -> &TraitRating {
+        return self.traits.get(&t).expect("unexpected character trait");
+    }
+
+    pub fn mut_trait(&mut self, t: Trait) -> &mut TraitRating {
+        return self.traits.get_mut(&t).expect("unexpected character trait");
+    }
+
     pub fn full_debug_string(&self) -> String {
-        let traits_str = Trait::iter().map(|t| format!("{}:{}", t.string3(), self.get_trait_value(t))).collect::<Vec<String>>().join(" ");
+        let traits_str = Trait::iter().map(|t| {
+            let t_desc = self.get_trait_desc(t);
+            return format!("{}:{}/{}", t.string3(), t_desc.value, t_desc.capacity);
+        }).collect::<Vec<String>>().join(" ");
         return format!("[{:03}|{:10}] {}", self.id.0, self.name, traits_str);
+    }
+
+    pub fn compute_end_of_turn_delta(&self) -> Option<CharacterDelta> {
+        let mut deltas: std::collections::HashMap<Trait, i32> = maplit::hashmap!{};
+        for (t, current) in &self.traits {
+            let mut inc = 0;
+            loop {
+                if current.capacity == current.value { break }
+                let prob = (current.capacity - current.value - inc) as f64 / 1000.0;
+                // XXX Test for this?
+                // TODO tweak weights
+                // TODO non-linear probabiliy?
+//                println!("prob = {} = 1 / (({} - {} - {}) * 10)", prob, current.capacity, current.value, inc);
+                if rand::thread_rng().gen_bool(prob) {
+                    inc = inc + 1
+                } else {
+                    break;
+                }
+            }
+            if inc > 0 {
+                println!("Trait change: cid={} trait={} delta={}", self.id, t.string3(), inc);
+                deltas.insert(*t, current.value + inc);
+            }
+        }
+
+        if deltas.len() > 0 {
+            return Some(CharacterDelta{id: self.id, changed_trait_values: deltas});
+        } else {
+            return None;
+        }
     }
 }
 
 fn random_stat() -> TraitRating {
-    let x: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
-    return TraitRating{value: 50 + (10.0 * x) as i32};
+    let cap_z_score: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
+    let growth_z_score: f32 = rand::thread_rng().sample(rand_distr::StandardNormal);
+
+    let capacity = 50 + (10.0 * cap_z_score) as i32;
+    let growth = 10 + (10.0 * growth_z_score) as i32;
+
+    return TraitRating{
+        capacity: capacity,
+        value: std::cmp::max(0, std::cmp::min(capacity, capacity - growth)),
+    };
 }
 
 fn random_traits() -> std::collections::HashMap<Trait, TraitRating> {

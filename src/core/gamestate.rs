@@ -38,6 +38,7 @@ enum MutationT {
     EndTurn,
     SetFood{v: types::Millis},
     UserCommand{cmd: UserCommand},
+    UpdateCharacter{character_delta: character::CharacterDelta},
 }
 
 fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
@@ -51,6 +52,13 @@ fn apply_mutation(state: &mut GameStateT, m: &MutationT) {
         }
         &MutationT::SetFood{v} => state.food = *v,
         &MutationT::UserCommand{cmd} => apply_user_command(state, cmd),
+        &MutationT::UpdateCharacter{character_delta} => {
+            let character = state.population.mut_character_with_id(character_delta.id)
+                .expect(&format!("no character with id {}", character_delta.id));
+            for (&t, &new_v) in &character_delta.changed_trait_values {
+                character.mut_trait(t).value = new_v;
+            }
+        }
     }
 }
 
@@ -138,6 +146,10 @@ impl GameState {
             self.machine.state().castle.food_infrastructure.food_storage,
             self.machine.state().food + self.food_delta());
 
+
+        for char_delta in self.machine.state().population.compute_end_of_turn_deltas() {
+            self.machine.apply(&MutationT::UpdateCharacter{character_delta: char_delta})?;
+        }
         // TODO: Need to decide what explicitly gets written down, and what gets
         // recomputed by the execute_mutation framework...
         self.machine.apply(&MutationT::SetFood{v: food})?;
