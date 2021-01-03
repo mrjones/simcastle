@@ -2,6 +2,7 @@
 // - Checkpoint & trim
 
 use serde::{Deserialize, Serialize};
+use log::*;
 
 pub struct StateMachine<S, D> {
     state: S,
@@ -74,6 +75,7 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
     pub fn init(initial_state: S,
                 apply_fn: Box<dyn Fn(&mut S, &D) -> anyhow::Result<()>>,
                 mut saver: Saver<S, D>) -> anyhow::Result<PersistentStateMachine<S, D>> {
+        info!("Beginning new game.");
         saver.append_checkpoint(&initial_state)?;
         return Ok(PersistentStateMachine{
             machine: StateMachine::new(initial_state, apply_fn),
@@ -84,6 +86,7 @@ impl <S: serde::de::DeserializeOwned + serde::Serialize + Clone, D: serde::de::D
     pub fn recover(lines: &mut dyn Iterator<Item=String>,
                    apply_fn: &dyn Fn(&mut S, &D) -> anyhow::Result<()>) -> anyhow::Result<S> {
         use anyhow::Context;
+        info!("Recovering...");
 
         let head = lines.next();
         let initial_entry: LogEntry<S, D> = serde_json::from_str(
@@ -135,7 +138,7 @@ mod statemachine_tests {
         let logfile: std::rc::Rc<std::sync::Mutex<Vec<u8>>> = std::rc::Rc::new(std::sync::Mutex::new(vec![]));
 
         let apply_fn =
-            |state: &mut Total, delta: &Increment| state.v += delta.i;
+            |state: &mut Total, delta: &Increment| { state.v += delta.i; return Ok(()); };
 
         {
             let saver = Saver::<Total, Increment>{

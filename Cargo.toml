@@ -16,7 +16,9 @@ path = "src/cmdline/main.rs"
 
 [dependencies]
 anyhow = "*"
+env_logger = "*"
 itertools = "*"
+log = "*"
 maplit = "*"
 rand = "*"
 rand_distr = "*"

@@ -42,6 +42,8 @@ fn restore_game() -> simcastle_core::gamestate::GameState {
 }
 
 fn main() {
+    env_logger::init();
+
     let mut game: simcastle_core::gamestate::GameState = if prompt_restore() {
         restore_game()
     } else {

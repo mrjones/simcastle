@@ -3,6 +3,7 @@ extern crate rand;
 extern crate rand_distr;
 extern crate std;
 
+use log::{debug};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
@@ -109,7 +110,7 @@ impl Character {
                 }
             }
             if inc > 0 {
-                println!("Trait change: cid={} trait={} delta={} v={}", self.id, t.string3(), inc, current.value + inc);
+                debug!("Trait change: cid={} trait={} delta={} v={}", self.id, t.string3(), inc, current.value + inc);
                 deltas.insert(*t, current.value + inc);
             }
         }
