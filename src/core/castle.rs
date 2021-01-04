@@ -9,9 +9,9 @@ pub enum Infrastructure {
 }
 
 impl Infrastructure {
-    pub fn build_cost(&self) -> i32 {
+    pub fn build_cost(&self) -> types::Millis {
         match self {
-            &Infrastructure::AcreOfFarmland => 10,
+            &Infrastructure::AcreOfFarmland => types::Millis::from_i32(10),
         }
     }
 }
@@ -19,26 +19,26 @@ impl Infrastructure {
 #[derive(Clone, Deserialize, Serialize)]
 pub struct BuildQueue {
     pub queue: Vec<Infrastructure>,
-    pub progress: i32,
+    pub progress: types::Millis,
 }
 
 pub struct BuildQueueTurnEndStatus {
     pub items_completed: Vec<Infrastructure>,
-    pub progress: i32,
+    pub progress: types::Millis,
 }
 
 impl BuildQueue {
     fn new() -> BuildQueue {
         return BuildQueue {
             queue: vec![],
-            progress: 0,
+            progress: types::Millis::zero(),
         };
     }
 
-    pub fn turn_end(&self, production: i32) -> BuildQueueTurnEndStatus {
+    pub fn turn_end(&self, production: types::Millis) -> BuildQueueTurnEndStatus {
         let new_progress = self.progress + production;
-        let (costs, items_completed): (Vec<i32>, Vec<Infrastructure>) = self.queue.iter()
-            .scan(0, |acc, item| {
+        let (costs, items_completed): (Vec<types::Millis>, Vec<Infrastructure>) = self.queue.iter()
+            .scan(types::Millis::zero(), |acc, item| {
                 *acc = *acc + item.build_cost();
                 return Some((*acc, item));
             })
@@ -47,7 +47,7 @@ impl BuildQueue {
 
         return BuildQueueTurnEndStatus {
             items_completed: items_completed,
-            progress: new_progress - costs.last().unwrap_or(&0),
+            progress: new_progress - *costs.last().unwrap_or(&types::Millis::zero()),
         }
     }
 }

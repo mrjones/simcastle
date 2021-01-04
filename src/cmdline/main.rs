@@ -83,9 +83,11 @@ fn main() {
             "vpop" | "population" => print_workforce(&game),
             "vt" | "teams" => print_teams(&game),
             "s" | "state" => print_state(&game),
-            "f" | "food" => print_food(&game),
+            "ef" | "explain food" => print_food(&game),
+            "eb" | "explain builder" => print_builder(&game),
             "assign" => set_assignment(&input_array, &mut game),
             "b" | "build" => build(&input_array, &mut game),
+            "bq" | "buildqueue" => print_build_queue(&game),
             "t" | "turn" => {
                 let prompts = game.advance_turn().expect("advance_turn");
                 handle_prompts(&mut game, prompts);
@@ -222,7 +224,8 @@ fn print_state(game: &simcastle_core::gamestate::GameState) {
              game.turn(),
              game.food(), game.castle().food_infrastructure.food_storage, format_delta(game.food_delta()),
              game.castle().build_queue.progress,
-             game.castle().build_queue.queue.first().map(|i| i.build_cost()).unwrap_or(-1),
+             game.castle().build_queue.queue.first().map(|i| i.build_cost()).unwrap_or(
+                 simcastle_core::types::Millis::from_i32(-1)),
              game.builder_economy().production.eval());
 }
 
@@ -234,4 +237,16 @@ fn print_food(game: &simcastle_core::gamestate::GameState) {
     println!("- Consumed: {:.2}", econ.consumed_per_turn);
     println!("=================");
     println!("= Net:      {:.2}", simcastle_core::types::Millis::from_f32(econ.production.eval()) - econ.consumed_per_turn);
+}
+
+fn print_builder(game: &simcastle_core::gamestate::GameState) {
+    let econ = game.builder_economy();
+    println!("Produced:\n{}\n",
+             econ.production.stringify("    "));
+}
+
+fn print_build_queue(game: &simcastle_core::gamestate::GameState) {
+    for item in &game.castle().build_queue.queue {
+        println!("{:?} {}", item, item.build_cost());
+    }
 }

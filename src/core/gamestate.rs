@@ -6,6 +6,7 @@ use super::statemachine;
 use super::types;
 use super::workforce;
 
+use log::{info};
 use anyhow::Context;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -37,7 +38,7 @@ pub enum UserCommand {
 
 #[derive(Clone, Serialize, Deserialize)]
 enum MutationT {
-    EndTurn{builder_progress: i32},
+    EndTurn{builder_progress: types::Millis},
     SetFood{v: types::Millis},
     UserCommand{cmd: UserCommand},
     UpdateCharacter{character_delta: character::CharacterDelta},
@@ -172,10 +173,11 @@ impl GameState {
         }
 
         let builder_production = self.builder_economy().production.eval();
-        let build_queue_state = self.machine.state().castle.build_queue.turn_end(builder_production as i32);
+        let build_queue_state = self.machine.state().castle.build_queue.turn_end(types::Millis::from_f32(builder_production));
 
         for infra in build_queue_state.items_completed {
             self.machine.apply(&MutationT::CompleteInfrastructure{infra: infra})?;
+            info!("Completed infrastructure: {:?}", infra);
         }
 
         // TODO: Need to decide what explicitly gets written down, and what gets

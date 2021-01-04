@@ -7,6 +7,10 @@ pub struct Millis {
 }
 
 impl Millis {
+    pub fn zero() -> Millis {
+        return Millis::from_i32(0);
+    }
+
     pub fn from_f32(v: f32) -> Millis{
         return Millis{rep: (1000.0 * v) as i32};
     }
