@@ -85,6 +85,7 @@ fn main() {
             "s" | "state" => print_state(&game),
             "f" | "food" => print_food(&game),
             "assign" => set_assignment(&input_array, &mut game),
+            "b" | "build" => build(&input_array, &mut game),
             "t" | "turn" => {
                 let prompts = game.advance_turn().expect("advance_turn");
                 handle_prompts(&mut game, prompts);
@@ -147,14 +148,35 @@ fn set_assignment(args: &Vec<String>, game: &mut simcastle_core::gamestate::Game
 
     char_id.map(|char_id| { job.map(|job| {
         println!("Making character {} into a {:?}", char_id, job);
-//        game.mut_workforce().assign(char_id, job);
         game.execute_command(&simcastle_core::gamestate::UserCommand::AssignToTeam{cid: char_id, job: job}).expect("execute_command");
     })});
+}
+
+fn build(args: &Vec<String>, game: &mut simcastle_core::gamestate::GameState) {
+//    assert_eq!(args[0], "assign");
+    if args.len() != 2 {
+        println!("Invalid assign: build <infra>");
+        return;
+    }
+
+    let infra = parse_infra(&args[1]).expect("couldn't parse infra");
+    game.execute_command(&simcastle_core::gamestate::UserCommand::AddToBuildQueue{infra: infra}).expect("execute build command");
+}
+
+fn parse_infra(infra_str: &str) -> Option<simcastle_core::castle::Infrastructure> {
+    match infra_str {
+        "farm" => return Some(simcastle_core::castle::Infrastructure::AcreOfFarmland),
+        _ => {
+            println!("Uknown infra: {}", infra_str);
+            return None;
+        }
+    }
 }
 
 fn parse_job(job_str: &str) -> Option<simcastle_core::workforce::Job> {
     match job_str {
         "farmer" => return Some(simcastle_core::workforce::Job::FARMER),
+        "builder" => return Some(simcastle_core::workforce::Job::BUILDER),
         _ => {
             println!("Uknown job: {}", job_str);
             return None;
@@ -196,7 +218,12 @@ fn format_delta(x: simcastle_core::types::Millis) -> String {
 }
 
 fn print_state(game: &simcastle_core::gamestate::GameState) {
-    println!("Turn: {}, Food: {}/{} ({})", game.turn(), game.food(), game.castle().food_infrastructure.food_storage, format_delta(game.food_delta()));
+    println!("Turn: {}, Food: {}/{} ({}), Build: {}/{} ({})",
+             game.turn(),
+             game.food(), game.castle().food_infrastructure.food_storage, format_delta(game.food_delta()),
+             game.castle().build_queue.progress,
+             game.castle().build_queue.queue.first().map(|i| i.build_cost()).unwrap_or(-1),
+             game.builder_economy().production.eval());
 }
 
 

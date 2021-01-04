@@ -54,6 +54,10 @@ impl Workforce {
         return &self.farmers;
     }
 
+    pub fn builders(&self) -> &team::Team {
+        return &self.builders;
+    }
+
     pub fn unassigned(&self) -> &team::Team {
         return &self.unassigned;
     }

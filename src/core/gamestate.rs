@@ -30,25 +30,30 @@ pub struct GameStateT {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub enum UserCommand {
     AssignToTeam{cid: character::CharacterId, job: workforce::Job},
-    AddCharacter{character: character::Character}
+//    Unassign{cid: character::CharacterId},
+    AddCharacter{character: character::Character},
+    AddToBuildQueue{infra: castle::Infrastructure},
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 enum MutationT {
-    EndTurn,
+    EndTurn{builder_progress: i32},
     SetFood{v: types::Millis},
     UserCommand{cmd: UserCommand},
     UpdateCharacter{character_delta: character::CharacterDelta},
+    CompleteInfrastructure{infra: castle::Infrastructure},
 }
 
 fn apply_mutation(state: &mut GameStateT, m: &MutationT) -> anyhow::Result<()> {
     match &m {
-        &MutationT::EndTurn => {
+        &MutationT::EndTurn{builder_progress} => {
             state.turn = state.turn + 1;
             state.workforce.advance_turn();
             for (c1, c2) in state.workforce.farmers().member_pairs() {
                 state.population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
             }
+            state.castle.build_queue.progress = *builder_progress;
+
         }
         &MutationT::SetFood{v} => state.food = *v,
         &MutationT::UserCommand{cmd} => apply_user_command(state, cmd)?,
@@ -57,6 +62,13 @@ fn apply_mutation(state: &mut GameStateT, m: &MutationT) -> anyhow::Result<()> {
                 .expect(&format!("no character with id {}", character_delta.id));
             for (&t, &new_v) in &character_delta.changed_trait_values {
                 character.mut_trait(t).value = new_v;
+            }
+        },
+        &MutationT::CompleteInfrastructure{infra} => {
+            match infra {
+                castle::Infrastructure::AcreOfFarmland => {
+                    state.castle.food_infrastructure.acres_of_farmland = state.castle.food_infrastructure.acres_of_farmland + 1;
+                }
             }
         }
     }
@@ -67,6 +79,7 @@ fn apply_mutation(state: &mut GameStateT, m: &MutationT) -> anyhow::Result<()> {
 fn apply_user_command(state: &mut GameStateT, c: &UserCommand) -> anyhow::Result<()> {
     match &c {
         &UserCommand::AssignToTeam{cid, job} => state.workforce.assign(cid.clone(), job.clone())?,
+//        &UserCommand::Unassign{cid} => state.workforce.unassign(*cid)?,
         &UserCommand::AddCharacter{character} => {
             if character.id().0 >= state.next_valid_cid.0 {
                 state.next_valid_cid = character::CharacterId(character.id().0 + 1);
@@ -74,6 +87,9 @@ fn apply_user_command(state: &mut GameStateT, c: &UserCommand) -> anyhow::Result
             state.population.add(character.clone());
             state.workforce.add_unassigned(character.id());
         },
+        &UserCommand::AddToBuildQueue{infra} => {
+            state.castle.build_queue.queue.push(*infra);
+        }
     }
 
     return Ok(());
@@ -84,7 +100,6 @@ pub enum Prompt {
 }
 
 pub struct GameState {
-//    save_file: &'svf mut std::fs::File,
     machine: statemachine::PersistentStateMachine<GameStateT, MutationT>,
 }
 
@@ -151,13 +166,24 @@ impl GameState {
             self.machine.state().food + self.food_delta());
 
 
+
         for char_delta in self.machine.state().population.compute_end_of_turn_deltas() {
             self.machine.apply(&MutationT::UpdateCharacter{character_delta: char_delta})?;
         }
+
+        let builder_production = self.builder_economy().production.eval();
+        let build_queue_state = self.machine.state().castle.build_queue.turn_end(builder_production as i32);
+
+        for infra in build_queue_state.items_completed {
+            self.machine.apply(&MutationT::CompleteInfrastructure{infra: infra})?;
+        }
+
         // TODO: Need to decide what explicitly gets written down, and what gets
         // recomputed by the execute_mutation framework...
         self.machine.apply(&MutationT::SetFood{v: food})?;
-        self.machine.apply(&MutationT::EndTurn)?;
+        self.machine.apply(&MutationT::EndTurn{
+            builder_progress: build_queue_state.progress,
+        })?;
 
         let mut prompts = vec![];
         if rand::thread_rng().gen_bool(0.1) {
