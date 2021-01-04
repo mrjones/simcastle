@@ -42,7 +42,7 @@ impl BuildQueue {
                 *acc = *acc + item.build_cost();
                 return Some((*acc, item));
             })
-            .take_while(|(total_cost, _)| *total_cost < new_progress)
+            .take_while(|(total_cost, _)| *total_cost <= new_progress)
             .unzip();
 
         return BuildQueueTurnEndStatus {

@@ -38,8 +38,7 @@ pub enum UserCommand {
 
 #[derive(Clone, Serialize, Deserialize)]
 enum MutationT {
-    EndTurn{builder_progress: types::Millis},
-    SetFood{v: types::Millis},
+    EndTurn{builder_accumulation: types::Millis, food: types::Millis},
     UserCommand{cmd: UserCommand},
     UpdateCharacter{character_delta: character::CharacterDelta},
     CompleteInfrastructure{infra: castle::Infrastructure},
@@ -47,16 +46,16 @@ enum MutationT {
 
 fn apply_mutation(state: &mut GameStateT, m: &MutationT) -> anyhow::Result<()> {
     match &m {
-        &MutationT::EndTurn{builder_progress} => {
+        &MutationT::EndTurn{builder_accumulation, food} => {
             state.turn = state.turn + 1;
+
             state.workforce.advance_turn();
             for (c1, c2) in state.workforce.farmers().member_pairs() {
                 state.population.mut_rapport_tracker().inc_turns_on_same_team(&c1, &c2);
             }
-            state.castle.build_queue.progress = *builder_progress;
-
+            state.castle.build_queue.progress = *builder_accumulation;
+            state.food = *food;
         }
-        &MutationT::SetFood{v} => state.food = *v,
         &MutationT::UserCommand{cmd} => apply_user_command(state, cmd)?,
         &MutationT::UpdateCharacter{character_delta} => {
             let character = state.population.mut_character_with_id(character_delta.id)
@@ -173,7 +172,7 @@ impl GameState {
         }
 
         let builder_production = self.builder_economy().production.eval();
-        let build_queue_state = self.machine.state().castle.build_queue.turn_end(types::Millis::from_f32(builder_production));
+        let build_queue_state = self.machine.state().castle.build_queue.turn_end(builder_production);
 
         for infra in build_queue_state.items_completed {
             self.machine.apply(&MutationT::CompleteInfrastructure{infra: infra})?;
@@ -182,9 +181,9 @@ impl GameState {
 
         // TODO: Need to decide what explicitly gets written down, and what gets
         // recomputed by the execute_mutation framework...
-        self.machine.apply(&MutationT::SetFood{v: food})?;
         self.machine.apply(&MutationT::EndTurn{
-            builder_progress: build_queue_state.progress,
+            food: food,
+            builder_accumulation: build_queue_state.progress,
         })?;
 
         let mut prompts = vec![];
@@ -205,7 +204,7 @@ impl GameState {
 
     pub fn food_delta(&self) -> types::Millis {
         let food_economy = self.food_economy();
-        return types::Millis::from_f32(food_economy.production.eval()) - food_economy.consumed_per_turn;
+        return food_economy.production.eval() - food_economy.consumed_per_turn;
     }
 
     pub fn population(&self) -> &population::Population {

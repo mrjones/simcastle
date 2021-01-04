@@ -46,6 +46,10 @@ impl Workforce {
         return self.teams.get(job).ok_or_else(|| anyhow!("Unknown team: {:?}", job));
     }
 
+    pub fn teams(&self) -> impl std::iter::Iterator<Item=(&Job, &team::Team)> {
+        return self.teams.iter();
+    }
+
     pub fn mut_team(&mut self, job: &Job) -> anyhow::Result<&mut team::Team> {
         return self.teams.get_mut(job).ok_or_else(|| anyhow!("Unknown team: {:?}", job));
     }

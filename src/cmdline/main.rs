@@ -198,11 +198,21 @@ fn parse_character_id(id_str: &str) -> Option<simcastle_core::character::Charact
 }
 
 fn print_teams(game: &simcastle_core::gamestate::GameState) {
-    println!("[[FARMERS]]");
-    for char_id in game.workforce().farmers().members() {
-        let c = game.population().character_with_id(char_id.clone());
-        println!("{:?}", c.unwrap().full_debug_string());
+    for (i, (ref job, ref team)) in game.workforce().teams().enumerate() {
+        if i > 0 {
+            println!();
+        }
+        println!("== {:?} ==", job);
+        for char_id in team.members() {
+            let c = game.population().character_with_id(char_id.clone());
+            println!("{:?}", c.unwrap().full_debug_string());
+        }
     }
+//    println!("[[FARMERS]]");
+//    for char_id in game.workforce().farmers().members() {
+//        let c = game.population().character_with_id(char_id.clone());
+//        println!("{:?}", c.unwrap().full_debug_string());
+//    }
 }
 
 fn print_workforce(game: &simcastle_core::gamestate::GameState) {
@@ -212,7 +222,7 @@ fn print_workforce(game: &simcastle_core::gamestate::GameState) {
 }
 
 fn format_delta(x: simcastle_core::types::Millis) -> String {
-    if x <= simcastle_core::types::Millis::from_i32(0) {
+    if x <= simcastle_core::types::Millis::zero() {
         return format!("{}", x);
     } else {
         return format!("+{}", x)
@@ -226,7 +236,7 @@ fn print_state(game: &simcastle_core::gamestate::GameState) {
              game.castle().build_queue.progress,
              game.castle().build_queue.queue.first().map(|i| i.build_cost()).unwrap_or(
                  simcastle_core::types::Millis::from_i32(-1)),
-             game.builder_economy().production.eval());
+             format_delta(game.builder_economy().production.eval()));
 }
 
 
@@ -236,7 +246,7 @@ fn print_food(game: &simcastle_core::gamestate::GameState) {
              econ.production.stringify("    "));
     println!("- Consumed: {:.2}", econ.consumed_per_turn);
     println!("=================");
-    println!("= Net:      {:.2}", simcastle_core::types::Millis::from_f32(econ.production.eval()) - econ.consumed_per_turn);
+    println!("= Net:      {:.2}", econ.production.eval() - econ.consumed_per_turn);
 }
 
 fn print_builder(game: &simcastle_core::gamestate::GameState) {

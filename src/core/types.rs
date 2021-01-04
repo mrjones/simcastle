@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Eq, Copy, Clone, Debug, Deserialize, Serialize)]
 pub struct Millis {
-    rep: i32,
+    rep: i64,
 }
 
 impl Millis {
@@ -12,11 +12,11 @@ impl Millis {
     }
 
     pub fn from_f32(v: f32) -> Millis{
-        return Millis{rep: (1000.0 * v) as i32};
+        return Millis{rep: (1000.0 * v) as i64};
     }
 
     pub fn from_i32(v: i32) -> Millis {
-        return Millis{rep: 1000 * v};
+        return Millis{rep: 1000 * (v as i64)};
     }
 }
 
@@ -51,6 +51,14 @@ impl std::ops::Sub for Millis {
 
     fn sub(self, other: Millis) -> Millis {
         return Millis{rep: self.rep - other.rep};
+    }
+}
+
+impl std::ops::Mul for Millis {
+    type Output = Millis;
+
+    fn mul(self, other: Millis) -> Millis {
+        return Millis{rep: self.rep * other.rep / 1000};
     }
 }
 
