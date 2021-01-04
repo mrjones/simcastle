@@ -15,6 +15,7 @@ pub struct Workforce {
     unassigned: team::Team,
 
     teams: std::collections::HashMap<Job, team::Team>,
+    assignments: std::collections::HashMap<character::CharacterId, Job>,
 }
 
 impl Workforce {
@@ -25,6 +26,7 @@ impl Workforce {
                 Job::FARMER => team::Team::new(),
             },
             unassigned: team::Team::new_with_ids(initial_ids),
+            assignments: maplit::hashmap!{},
         }
     }
 
@@ -36,6 +38,7 @@ impl Workforce {
     }
 
     pub fn add_unassigned(&mut self, char_id: character::CharacterId) {
+        assert!(!self.assignments.contains_key(&char_id));
         self.unassigned.add(&char_id);
     }
 
@@ -47,13 +50,31 @@ impl Workforce {
         return self.teams.get_mut(job).ok_or_else(|| anyhow!("Unknown team: {:?}", job));
     }
 
-    pub fn assign(&mut self, char_id: character::CharacterId, job: Job) -> anyhow::Result<()> {
-        if !self.unassigned.contains(&char_id) {
-            return Err(anyhow!("{} wasn't in {:?}", char_id, self.unassigned.members()));
+    fn unset_old_assignment(&mut self, char_id: character::CharacterId, job: Job) {
+        match self.assignments.get(&char_id).map(|jobref| *jobref) {
+            Some(old_job) => {
+                let old_team = self.mut_team(&old_job).expect(&format!("old_job doesn't have team {:?}", job));
+                assert!(old_team.contains(&char_id));
+                old_team.remove(&char_id);
+                self.assignments.remove(&char_id);
+            },
+            None => {
+                assert!(self.unassigned.contains(&char_id));
+                self.unassigned.remove(&char_id);
+            }
         }
+    }
 
-        self.unassigned.remove(&char_id);
+    pub fn assign(&mut self, char_id: character::CharacterId, job: Job) -> anyhow::Result<()> {
+        self.unset_old_assignment(char_id, job);
         self.mut_team(&job)?.add(&char_id);
+        self.assignments.insert(char_id, job);
+        return Ok(());
+    }
+
+    pub fn unassign(&mut self, char_id: character::CharacterId, job: Job) -> anyhow::Result<()> {
+        self.unset_old_assignment(char_id, job);
+        self.unassigned.add(&char_id);
         return Ok(());
     }
 
