@@ -6,12 +6,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum Job {
+    BUILDER,
     FARMER,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Workforce {
     farmers: team::Team,
+    builders: team::Team,
     unassigned: team::Team,
 }
 
@@ -19,6 +21,7 @@ impl Workforce {
     pub fn new(initial_ids: std::collections::HashSet<character::CharacterId>) -> Workforce {
         return Workforce {
             farmers: team::Team::new(),
+            builders: team::Team::new(),
             unassigned: team::Team::new_with_ids(initial_ids),
         }
     }
@@ -40,6 +43,7 @@ impl Workforce {
         self.unassigned.remove(&char_id);
 
         match job {
+            Job::BUILDER => self.builders.add(&char_id),
             Job::FARMER => self.farmers.add(&char_id),
         }
 

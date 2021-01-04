@@ -80,12 +80,10 @@ fn stringify_exp(e: &TaggedExp, indent: &str) -> String {
     }
 }
 
-fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>,
-                      team: &team::Team,
-                      population: &population::Population,
-                      infrastructure: &castle::FoodInfrastructure) -> TaggedExp {
-    let mut character_exps = vec![];
-
+fn team_linear_traits_food(weights: &std::collections::HashMap<character::Trait, f32>,
+                           team: &team::Team,
+                           population: &population::Population,
+                           infrastructure: &castle::FoodInfrastructure) -> TaggedExp {
     // TODO(mrjones): Consider sublinear (rather than 0) growth once 'farmers > acres of farmland'
     let base_production = if team.members().len() as i32 <=  infrastructure.acres_of_farmland {
         TaggedExp{e: Exp::Constant{v: 1.0}, tag: "base".to_string()}
@@ -97,7 +95,14 @@ fn team_linear_traits(weights: &std::collections::HashMap<character::Trait, f32>
             tag: "base (constrained by acres_of_farmland)".to_string(),
         }
     };
+    return team_linear_traits_generic(weights, team, population, base_production);
+}
 
+fn team_linear_traits_generic(weights: &std::collections::HashMap<character::Trait, f32>,
+                              team: &team::Team,
+                              population: &population::Population,
+                              base_production: TaggedExp) -> TaggedExp {
+    let mut character_exps = vec![];
     for c in team.members().iter().map(|cid| population.character_with_id(cid.clone()).unwrap()) {
         let mut character_skills = vec![base_production.clone()];
         for (t, weight) in weights {
@@ -158,7 +163,7 @@ fn food_production(team: &team::Team,
     return TaggedExp{
         e: Exp::BinaryExp{
             op: Op::MULTIPLY,
-            v1: Box::new(team_linear_traits(
+            v1: Box::new(team_linear_traits_food(
                 &maplit::hashmap!{
                     // 'x' boost per 10 points (1 stdev) of trait:
                     character::Trait::Intelligence => 0.05,
@@ -167,6 +172,30 @@ fn food_production(team: &team::Team,
                 team,
                 population,
                 infrastructure)),
+            v2: Box::new(cotenure_exp(team, population.rapport_tracker())),
+        },
+        tag: "production".to_string(),
+    }
+}
+
+fn builder_production(team: &team::Team,
+                      population: &population::Population) -> TaggedExp {
+    return TaggedExp{
+        e: Exp::BinaryExp{
+            op: Op::MULTIPLY,
+            v1: Box::new(team_linear_traits_generic(
+                &maplit::hashmap!{
+                    // 'x' boost per 10 points (1 stdev) of trait:
+                    character::Trait::Intelligence => 0.05,
+                    character::Trait::WorkEthic => 0.1,
+                    character::Trait::Strength => 0.1,
+                },
+                team,
+                population,
+                TaggedExp{
+                    tag: "base produciton".to_string(),
+                    e: Exp::Constant{v: 1.0},
+                })),
             v2: Box::new(cotenure_exp(team, population.rapport_tracker())),
         },
         tag: "production".to_string(),
@@ -200,6 +229,16 @@ mod exp_tests {
         };
         assert_eq!(4.0 * (1.1 + 1.2 + 1.3), e.eval(), "Error evaluating: {}", e.stringify(""));
     }
+}
+
+pub struct BuilderEconomy {
+    pub production: TaggedExp,
+}
+
+pub fn builder_economy(builders: &team::Team, population: &population::Population) -> BuilderEconomy {
+    return BuilderEconomy{
+        production: builder_production(builders, population),
+    };
 }
 
 pub struct FoodEconomy {

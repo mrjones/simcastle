@@ -171,6 +171,10 @@ impl GameState {
         return economy::food(self.machine.state().workforce.farmers(), &self.machine.state().castle.food_infrastructure, &self.machine.state().population);
     }
 
+    pub fn builder_economy(&self) -> economy::BuilderEconomy {
+        return economy::builder_economy(self.machine.state().workforce.builders(), &self.machine.state().population);
+    }
+
     pub fn food_delta(&self) -> types::Millis {
         let food_economy = self.food_economy();
         return types::Millis::from_f32(food_economy.production.eval()) - food_economy.consumed_per_turn;
