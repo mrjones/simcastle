@@ -4,7 +4,7 @@ use super::team;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum Job {
     BUILDER,
     FARMER,
@@ -12,27 +12,39 @@ pub enum Job {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Workforce {
-    farmers: team::Team,
-    builders: team::Team,
     unassigned: team::Team,
+
+    teams: std::collections::HashMap<Job, team::Team>,
 }
 
 impl Workforce {
     pub fn new(initial_ids: std::collections::HashSet<character::CharacterId>) -> Workforce {
         return Workforce {
-            farmers: team::Team::new(),
-            builders: team::Team::new(),
+            teams: maplit::hashmap!{
+                Job::BUILDER => team::Team::new(),
+                Job::FARMER => team::Team::new(),
+            },
             unassigned: team::Team::new_with_ids(initial_ids),
         }
     }
 
     pub fn advance_turn(&mut self) {
-        self.farmers.advance_turn();
+        for (&_, ref mut team) in &mut self.teams {
+            team.advance_turn();
+        }
         self.unassigned.advance_turn();
     }
 
     pub fn add_unassigned(&mut self, char_id: character::CharacterId) {
         self.unassigned.add(&char_id);
+    }
+
+    pub fn team(&self, job: &Job) -> anyhow::Result<&team::Team> {
+        return self.teams.get(job).ok_or_else(|| anyhow!("Unknown team: {:?}", job));
+    }
+
+    pub fn mut_team(&mut self, job: &Job) -> anyhow::Result<&mut team::Team> {
+        return self.teams.get_mut(job).ok_or_else(|| anyhow!("Unknown team: {:?}", job));
     }
 
     pub fn assign(&mut self, char_id: character::CharacterId, job: Job) -> anyhow::Result<()> {
@@ -41,21 +53,16 @@ impl Workforce {
         }
 
         self.unassigned.remove(&char_id);
-
-        match job {
-            Job::BUILDER => self.builders.add(&char_id),
-            Job::FARMER => self.farmers.add(&char_id),
-        }
-
+        self.mut_team(&job)?.add(&char_id);
         return Ok(());
     }
 
     pub fn farmers(&self) -> &team::Team {
-        return &self.farmers;
+        return self.team(&Job::FARMER).expect("FARMERS");
     }
 
     pub fn builders(&self) -> &team::Team {
-        return &self.builders;
+        return self.team(&Job::BUILDER).expect("BUILDERS");
     }
 
     pub fn unassigned(&self) -> &team::Team {
